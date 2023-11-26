@@ -16,7 +16,7 @@ pub enum Error {
 
 pub type Result<T> = result::Result<T, Error>;
 
-pub trait Cartridge {
+pub trait Cartridge: Send {
     fn write_8(&mut self, address: u16, value: u8);
     fn read_8(&self, address: u16) -> u8;
     fn read_16(&self, address: u16) -> u16;

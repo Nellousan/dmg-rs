@@ -18,7 +18,7 @@ pub enum Register16 {
     PC,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Registers {
     af: u16,
     bc: u16,

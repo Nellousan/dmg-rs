@@ -1,11 +1,14 @@
 mod cartridge;
+mod dmg;
 mod gui;
 mod lr35902;
 mod mmu;
+mod thread;
 
+use dmg::DotMatrixGame;
 use gui::Gui;
-use mmu::MMU;
-use std::{env, error};
+use std::{env, error, sync::mpsc::channel};
+use thread::{DmgMessage, GuiMessage};
 use tracing::Level;
 use tracing_subscriber::{
     fmt::{self, writer::MakeWriterExt},
@@ -25,17 +28,23 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         )
         .try_init()?;
 
+    let (gui_tx, gui_rx) = channel::<GuiMessage>();
+    let (dmg_tx, dmg_rx) = channel::<DmgMessage>();
+    let tx_end = gui_tx.clone();
+
     let args: Vec<String> = env::args().collect();
-    let cartridge = cartridge::from_file(&args[1])?;
 
-    let _mmu = MMU::new(cartridge);
+    let mut dmg = DotMatrixGame::new_with_rom_path(&args[1], dmg_tx, gui_rx)?;
 
-    let native_options = eframe::NativeOptions::default();
+    std::thread::spawn(move || dmg.start_game());
+
     eframe::run_native(
         "My egui App",
-        native_options,
-        Box::new(|cc| Box::new(Gui::new(cc))),
+        eframe::NativeOptions::default(),
+        Box::new(|cc| Box::new(Gui::new(cc, gui_tx, dmg_rx))),
     )?;
+
+    tx_end.send(GuiMessage::Close)?;
 
     Ok(())
 }

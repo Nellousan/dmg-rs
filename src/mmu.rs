@@ -1,13 +1,13 @@
 use crate::cartridge::Cartridge;
 
-pub struct MMU {
+pub struct MemoryMapUnit {
     memory: Vec<u8>,
     cartridge: Box<dyn Cartridge>,
 }
 
-impl MMU {
+impl MemoryMapUnit {
     pub fn new(cartridge: Box<dyn Cartridge>) -> Self {
-        MMU {
+        MemoryMapUnit {
             memory: vec![0u8; 0xFFFF],
             cartridge,
         }

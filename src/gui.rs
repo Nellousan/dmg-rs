@@ -1,16 +1,26 @@
+use std::sync::mpsc::{Receiver, Sender};
+
 use eframe::{
     egui::{self, load::SizedTexture, RichText},
     epaint::{Color32, ColorImage, TextureHandle},
 };
 
+use crate::thread::{DmgMessage, GuiMessage};
+
 pub struct Gui {
     color_image: ColorImage,
     texture_handle: TextureHandle,
     texture: SizedTexture,
+    tx: Sender<GuiMessage>,
+    rx: Receiver<DmgMessage>,
 }
 
 impl Gui {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        tx: Sender<GuiMessage>,
+        rx: Receiver<DmgMessage>,
+    ) -> Self {
         let raw_image_data = [255u8; 200 * 200 * 4];
         let color_image = ColorImage::from_rgba_unmultiplied([200, 200], &raw_image_data);
         let texture_handle =
@@ -22,6 +32,8 @@ impl Gui {
             color_image,
             texture_handle,
             texture,
+            tx,
+            rx,
         }
     }
 }
