@@ -165,6 +165,13 @@ impl Registers {
     pub fn get_carry_flag(&self) -> bool {
         ((self.get_8(Register8::F) >> CFLAGBIT) & 1u8) != 0
     }
+
+    pub fn set_flags(&mut self, z: bool, n: bool, h: bool, c: bool) {
+        self.set_zero_flag(z);
+        self.set_n_flag(n);
+        self.set_h_flag(h);
+        self.set_carry_flag(c);
+    }
 }
 
 pub struct LR35902 {
@@ -196,68 +203,171 @@ impl LR35902 {
         result
     }
 
-    // CPU Instruction helpers
-    fn load_8(&mut self, destination: Register8, source: Register8) {
+    //////
+    // CPU Instructions
+    //////
+
+    // Load instructions
+    fn load_8(&mut self, destination: Register8, source: Register8) -> usize {
         self.registers
             .set_8(destination, self.registers.get_8(source));
+        4
     }
 
-    fn load_8_at(&mut self, destination: Register16, source: Register8) {
+    fn load_8_at(&mut self, destination: Register16, source: Register8) -> usize {
         let address = self.registers.get_16(destination);
         let value = self.registers.get_8(source);
         self.mmu.borrow_mut().write_8(address, value);
+        8
     }
 
-    fn load_8_at_increment(&mut self, destination: Register16, source: Register8) {
+    fn load_8_at_increment(&mut self, destination: Register16, source: Register8) -> usize {
         self.load_8_at(destination, source);
         self.registers
             .set_16(destination, self.registers.get_16(destination) + 1);
+        8
     }
 
-    fn load_8_at_decrement(&mut self, destination: Register16, source: Register8) {
+    fn load_8_at_decrement(&mut self, destination: Register16, source: Register8) -> usize {
         self.load_8_at(destination, source);
         self.registers
             .set_16(destination, self.registers.get_16(destination) - 1);
+        8
     }
 
-    fn load_8_from(&mut self, destination: Register8, source: Register16) {
+    fn load_8_from(&mut self, destination: Register8, source: Register16) -> usize {
         let address = self.registers.get_16(source);
         let value = self.mmu.borrow().read_8(address);
         self.registers.set_8(destination, value);
+        8
     }
 
-    fn load_8_from_increment(&mut self, destination: Register8, source: Register16) {
+    fn load_8_from_increment(&mut self, destination: Register8, source: Register16) -> usize {
         self.load_8_from(destination, source);
         self.registers
             .set_16(source, self.registers.get_16(source) + 1);
+        8
     }
 
-    fn load_8_from_decrement(&mut self, destination: Register8, source: Register16) {
+    fn load_8_from_decrement(&mut self, destination: Register8, source: Register16) -> usize {
         self.load_8_from(destination, source);
         self.registers
             .set_16(source, self.registers.get_16(source) - 1);
+        8
     }
 
-    fn load_8_immediate(&mut self, destination: Register8) {
+    fn load_8_immediate(&mut self, destination: Register8) -> usize {
         let value = self.pc_next_8();
         self.registers.set_8(destination, value);
+        8
     }
 
-    fn load_8_immediate_at(&mut self, destination: Register16) {
+    fn load_8_immediate_at(&mut self, destination: Register16) -> usize {
         let address = self.registers.get_16(destination);
         let value = self.pc_next_8();
         self.mmu.borrow_mut().write_8(address, value);
+        12
     }
 
-    fn load_8_from_immediate(&mut self, destination: Register8) {
+    fn load_8_from_immediate(&mut self, destination: Register8) -> usize {
         let address = self.pc_next_16();
         let value = self.mmu.borrow().read_8(address);
         self.registers.set_8(destination, value);
+        16
     }
 
-    fn load_8_at_immediate(&mut self, source: Register8) {
+    fn load_8_at_immediate(&mut self, source: Register8) -> usize {
         let address = self.pc_next_16();
         let value = self.registers.get_8(source);
         self.mmu.borrow_mut().write_8(address, value);
+        16
+    }
+
+    fn load_8_from_io(&mut self, destination: Register8, source: Register8) -> usize {
+        let address = 0xFF00 + self.registers.get_8(source) as u16;
+        let value = self.mmu.borrow().read_8(address);
+        self.registers.set_8(destination, value);
+        8
+    }
+
+    fn load_8_from_io_immediate(&mut self, destination: Register8) -> usize {
+        let address = 0xFF00 + self.pc_next_8() as u16;
+        let value = self.mmu.borrow().read_8(address);
+        self.registers.set_8(destination, value);
+        12
+    }
+
+    fn load_8_at_io(&mut self, destination: Register8, source: Register8) -> usize {
+        let address = 0xFF00 + self.registers.get_8(destination) as u16;
+        let value = self.registers.get_8(source);
+        self.mmu.borrow_mut().write_8(address, value);
+        8
+    }
+
+    fn load_8_at_io_immediate(&mut self, source: Register8) -> usize {
+        let address = 0xFF00 + self.pc_next_8() as u16;
+        let value = self.registers.get_8(source);
+        self.mmu.borrow_mut().write_8(address, value);
+        12
+    }
+
+    fn load_16(&mut self, destination: Register16, source: Register16) -> usize {
+        let value = self.registers.get_16(source);
+        self.registers.set_16(destination, value);
+        8
+    }
+
+    fn load_16_at_immediate(&mut self, source: Register16) -> usize {
+        let address = self.pc_next_16();
+        let value = self.registers.get_16(source);
+        self.mmu.borrow_mut().write_16(address, value);
+        20
+    }
+
+    fn load_16_immediate(&mut self, destination: Register16) -> usize {
+        let value = self.pc_next_16();
+        self.registers.set_16(destination, value);
+        12
+    }
+
+    fn load_16_add_immediate(&mut self, destination: Register16, source: Register16) -> usize {
+        let immediate = self.pc_next_8();
+        let value = self.registers.get_16(source);
+
+        let res = (((value & 0x000F) as i8) + ((immediate & 0x0F) as i8)) as u8;
+        let h_flag = res > 0x0F;
+        let c_flag = value.checked_add(immediate as u16) == None;
+
+        let value = (value as i16).wrapping_add(immediate as i16) as u16;
+        self.registers.set_16(destination, value);
+
+        self.registers.set_flags(false, false, h_flag, c_flag);
+        12
+    }
+
+    fn push(&mut self, source: Register16) -> usize {
+        let value = self.registers.get_16(source);
+        let address = self.registers.get_16(Register16::SP);
+        self.registers.set_16(Register16::SP, address - 2);
+        self.mmu.borrow_mut().write_16(address - 2, value);
+        16
+    }
+
+    fn pop(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(Register16::SP);
+        let value = self.mmu.borrow().read_16(address);
+        self.registers.set_16(destination, value);
+        self.registers.set_16(Register16::SP, address + 2);
+        12
+    }
+
+    // Arithmetic instructions
+    fn add_8_set_flags(&mut self, destination: u8, source: u8) -> u8 {
+        let h_flag = (destination & 0x0F) + (source & 0x0F) > 0x0F;
+        let c_flag = destination.checked_add(source) == None;
+        let res = destination.wrapping_add(source);
+        let z_flag = res == 0;
+        self.registers.set_flags(z_flag, false, h_flag, c_flag);
+        res
     }
 }
