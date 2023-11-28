@@ -151,7 +151,7 @@ impl CartridgeMBC1 {
         self.ram[self.selected_ram_bank as usize * 0x2000 + address as usize - 0xA000]
     }
 
-    fn ram_read_16(&mut self, address: u16) -> u16 {
+    fn ram_read_16(&self, address: u16) -> u16 {
         let n1 = self.read_8(address);
         let n2 = self.read_8(address + 1);
         u16::from_le_bytes([n1, n2])

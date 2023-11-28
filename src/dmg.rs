@@ -28,7 +28,7 @@ impl DotMatrixGame {
         let cartridge = cartridge::from_file(path)?;
         let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
         Ok(Self {
-            mmu,
+            mmu: mmu.clone(),
             cpu: LR35902::new(mmu),
             clock_ticks: 0,
             tx,
