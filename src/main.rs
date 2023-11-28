@@ -1,4 +1,5 @@
 mod cartridge;
+mod disassembler;
 mod dmg;
 mod gui;
 mod lr35902;
@@ -34,9 +35,10 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let args: Vec<String> = env::args().collect();
 
-    let mut dmg = DotMatrixGame::new_with_rom_path(&args[1], dmg_tx, gui_rx)?;
-
-    std::thread::spawn(move || dmg.start_game());
+    let handle = std::thread::spawn(move || {
+        let mut dmg = DotMatrixGame::new_with_rom_path(&args[1], dmg_tx, gui_rx)?;
+        dmg.start_game()
+    });
 
     eframe::run_native(
         "My egui App",
@@ -46,5 +48,6 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     tx_end.send(GuiMessage::Close)?;
 
+    handle.join().map_err(|e| format!("{:?}", e))??;
     Ok(())
 }

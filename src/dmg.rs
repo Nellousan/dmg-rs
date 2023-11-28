@@ -1,14 +1,18 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::mpsc::{Receiver, Sender},
+};
 
 use crate::{
     cartridge,
-    lr35902::LR35902,
+    lr35902::{Register16, LR35902},
     mmu::MemoryMapUnit,
     thread::{DmgMessage, GuiMessage},
 };
 
 pub struct DotMatrixGame {
-    mmu: MemoryMapUnit,
+    mmu: Rc<RefCell<MemoryMapUnit>>,
     cpu: LR35902,
     clock_ticks: usize,
     tx: Sender<DmgMessage>,
@@ -22,22 +26,32 @@ impl DotMatrixGame {
         rx: Receiver<GuiMessage>,
     ) -> Result<Self, anyhow::Error> {
         let cartridge = cartridge::from_file(path)?;
+        let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
         Ok(Self {
-            mmu: MemoryMapUnit::new(cartridge),
-            cpu: LR35902::new(),
+            mmu,
+            cpu: LR35902::new(mmu),
             clock_ticks: 0,
             tx,
             rx,
         })
     }
 
-    pub fn start_game(&mut self) -> Result<(), anyhow::Error> {
+    fn handle_gui_messages(&mut self) -> anyhow::Result<()> {
+        while let Ok(result) = self.rx.try_recv() {
+            match result {
+                GuiMessage::Close => return Err(anyhow::Error::msg("")),
+                _ => (),
+            }
+        }
+        Ok(())
+    }
+
+    pub fn start_game(&mut self) -> anyhow::Result<()> {
+        self.cpu.registers.set_16(Register16::PC, 0x0100);
+
         loop {
-            if let Ok(result) = self.rx.try_recv() {
-                match result {
-                    GuiMessage::Close => break,
-                    _ => (),
-                }
+            if let Err(_) = self.handle_gui_messages() {
+                break;
             }
         }
 

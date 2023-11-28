@@ -1,3 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
+
+use crate::mmu::MemoryMapUnit;
+
 pub enum Register8 {
     A,
     F,
@@ -103,6 +107,9 @@ impl Registers {
             Register16::PC => self.pc,
         }
     }
+    pub fn inc_pc(&mut self, value: u16) {
+        self.pc += value;
+    }
 
     pub fn set_zero_flag(&mut self, value: bool) {
         let f = self.get_8(Register8::F);
@@ -112,6 +119,7 @@ impl Registers {
             self.set_8(Register8::F, f & !(1u8 << ZFLAGBIT));
         }
     }
+
     pub fn get_zero_flag(&self) -> bool {
         ((self.get_8(Register8::F) >> ZFLAGBIT) & 1u8) != 0
     }
@@ -155,15 +163,32 @@ impl Registers {
     }
 }
 
-#[derive(Default)]
 pub struct LR35902 {
-    registers: Registers,
+    pub registers: Registers,
+    mmu: Rc<RefCell<MemoryMapUnit>>,
 }
 
 impl LR35902 {
-    pub fn new() -> Self {
+    pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>) -> Self {
         LR35902 {
-            ..Default::default()
+            mmu,
+            registers: Default::default(),
         }
+    }
+
+    pub fn next_instruction(&mut self) -> usize {
+        unimplemented!()
+    }
+
+    fn pc_next_8(&mut self) -> u8 {
+        let result = self.mmu.borrow().read_8(self.registers.pc);
+        self.registers.pc += 1;
+        result
+    }
+
+    fn pc_next_16(&mut self) -> u16 {
+        let result = self.mmu.borrow().read_16(self.registers.pc);
+        self.registers.pc += 2;
+        result
     }
 }
