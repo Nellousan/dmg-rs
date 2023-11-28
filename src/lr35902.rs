@@ -362,12 +362,66 @@ impl LR35902 {
     }
 
     // Arithmetic instructions
-    fn add_8_set_flags(&mut self, destination: u8, source: u8) -> u8 {
-        let h_flag = (destination & 0x0F) + (source & 0x0F) > 0x0F;
-        let c_flag = destination.checked_add(source) == None;
-        let res = destination.wrapping_add(source);
+
+    // Helper functions for ADD and ADC to avoid code duplication
+    fn add_8_carry_set_flags(&mut self, destination: u8, source: u8, carry: u8) -> u8 {
+        let h_flag = (destination & 0x0F) + (source & 0x0F) + carry > 0x0F;
+        let mut c_flag = destination.checked_add(source) == None;
+        let mut res = destination.wrapping_add(source);
+        if let None = res.checked_add(carry) {
+            c_flag = true;
+        }
+        res = res.wrapping_add(carry);
         let z_flag = res == 0;
         self.registers.set_flags(z_flag, false, h_flag, c_flag);
         res
+    }
+
+    fn add_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+
+        let res = self.add_8_carry_set_flags(a_value, value, 0);
+        self.registers.set_8(Register8::A, res);
+        4
+    }
+
+    fn add_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+
+        let res = self.add_8_carry_set_flags(a_value, value, 0);
+        self.registers.set_8(Register8::A, res);
+        8
+    }
+
+    fn add_carry_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+        let carry = if self.registers.get_carry_flag() {
+            1u8
+        } else {
+            0u8
+        };
+
+        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        self.registers.set_8(Register8::A, res);
+        4
+    }
+
+    fn add_carry_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+        let carry = if self.registers.get_carry_flag() {
+            1u8
+        } else {
+            0u8
+        };
+
+        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        self.registers.set_8(Register8::A, res);
+        4
     }
 }
