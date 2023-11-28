@@ -2,6 +2,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::mmu::MemoryMapUnit;
 
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
 pub enum Register8 {
     A,
     F,
@@ -13,6 +15,8 @@ pub enum Register8 {
     L,
 }
 
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
 pub enum Register16 {
     AF,
     BC,
@@ -190,5 +194,70 @@ impl LR35902 {
         let result = self.mmu.borrow().read_16(self.registers.pc);
         self.registers.pc += 2;
         result
+    }
+
+    // CPU Instruction helpers
+    fn load_8(&mut self, destination: Register8, source: Register8) {
+        self.registers
+            .set_8(destination, self.registers.get_8(source));
+    }
+
+    fn load_8_at(&mut self, destination: Register16, source: Register8) {
+        let address = self.registers.get_16(destination);
+        let value = self.registers.get_8(source);
+        self.mmu.borrow_mut().write_8(address, value);
+    }
+
+    fn load_8_at_increment(&mut self, destination: Register16, source: Register8) {
+        self.load_8_at(destination, source);
+        self.registers
+            .set_16(destination, self.registers.get_16(destination) + 1);
+    }
+
+    fn load_8_at_decrement(&mut self, destination: Register16, source: Register8) {
+        self.load_8_at(destination, source);
+        self.registers
+            .set_16(destination, self.registers.get_16(destination) - 1);
+    }
+
+    fn load_8_from(&mut self, destination: Register8, source: Register16) {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        self.registers.set_8(destination, value);
+    }
+
+    fn load_8_from_increment(&mut self, destination: Register8, source: Register16) {
+        self.load_8_from(destination, source);
+        self.registers
+            .set_16(source, self.registers.get_16(source) + 1);
+    }
+
+    fn load_8_from_decrement(&mut self, destination: Register8, source: Register16) {
+        self.load_8_from(destination, source);
+        self.registers
+            .set_16(source, self.registers.get_16(source) - 1);
+    }
+
+    fn load_8_immediate(&mut self, destination: Register8) {
+        let value = self.pc_next_8();
+        self.registers.set_8(destination, value);
+    }
+
+    fn load_8_immediate_at(&mut self, destination: Register16) {
+        let address = self.registers.get_16(destination);
+        let value = self.pc_next_8();
+        self.mmu.borrow_mut().write_8(address, value);
+    }
+
+    fn load_8_from_immediate(&mut self, destination: Register8) {
+        let address = self.pc_next_16();
+        let value = self.mmu.borrow().read_8(address);
+        self.registers.set_8(destination, value);
+    }
+
+    fn load_8_at_immediate(&mut self, source: Register8) {
+        let address = self.pc_next_16();
+        let value = self.registers.get_8(source);
+        self.mmu.borrow_mut().write_8(address, value);
     }
 }

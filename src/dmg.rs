@@ -24,7 +24,7 @@ impl DotMatrixGame {
         path: &str,
         tx: Sender<DmgMessage>,
         rx: Receiver<GuiMessage>,
-    ) -> Result<Self, anyhow::Error> {
+    ) -> anyhow::Result<Self> {
         let cartridge = cartridge::from_file(path)?;
         let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
         Ok(Self {
