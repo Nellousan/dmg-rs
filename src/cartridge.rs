@@ -18,6 +18,7 @@ pub type Result<T> = result::Result<T, Error>;
 
 pub trait Cartridge: Send {
     fn write_8(&mut self, address: u16, value: u8);
+    fn write_16(&mut self, address: u16, value: u16);
     fn read_8(&self, address: u16) -> u8;
     fn read_16(&self, address: u16) -> u16;
 }
@@ -53,7 +54,13 @@ impl CartridgeROM {
 }
 
 impl Cartridge for CartridgeROM {
-    fn write_8(&mut self, _address: u16, _value: u8) {}
+    fn write_8(&mut self, _address: u16, _value: u8) {
+        unreachable!()
+    }
+
+    fn write_16(&mut self, _address: u16, _value: u16) {
+        unreachable!()
+    }
 
     fn read_8(&self, address: u16) -> u8 {
         self.rom[address as usize]
@@ -62,7 +69,7 @@ impl Cartridge for CartridgeROM {
     fn read_16(&self, address: u16) -> u16 {
         let n1 = self.read_8(address);
         let n2 = self.read_8(address + 1);
-        ((n1 as u16) << 8) | (n2 as u16)
+        u16::from_le_bytes([n1, n2])
     }
 }
 
@@ -118,22 +125,36 @@ impl CartridgeMBC1 {
         self.selected_ram_bank = value as u32;
     }
 
-    fn ram_write_8(&mut self, address: u16, value: u8) {
-        self.ram[self.selected_ram_bank as usize * 0x2000 + address as usize - 0xA000] = value;
-    }
-
-    fn ram_read_8(&self, address: u16) -> u8 {
-        self.ram[self.selected_ram_bank as usize * 0x2000 + address as usize - 0xA000]
-    }
-
-    fn bank_rom_read_8(&self, address: u16) -> u8 {
+    fn rom_read_8(&self, address: u16) -> u8 {
         self.rom[self.selected_rom_bank as usize * 0x4000 + address as usize - 0x4000]
     }
 
     fn rom_read_16(&self, address: u16) -> u16 {
         let n1 = self.read_8(address);
         let n2 = self.read_8(address + 1);
-        ((n1 as u16) << 8) | (n2 as u16)
+        u16::from_le_bytes([n1, n2])
+    }
+
+    fn ram_write_8(&mut self, address: u16, value: u8) {
+        self.ram[self.selected_ram_bank as usize * 0x2000 + address as usize - 0xA000] = value;
+    }
+
+    fn ram_write_16(&mut self, address: u16, value: u16) {
+        let bytes = value.to_le_bytes();
+
+        self.ram[self.selected_ram_bank as usize * 0x2000 + address as usize - 0xA000] = bytes[0];
+        self.ram[self.selected_ram_bank as usize * 0x2000 + (address + 1) as usize - 0xA000] =
+            bytes[1];
+    }
+
+    fn ram_read_8(&self, address: u16) -> u8 {
+        self.ram[self.selected_ram_bank as usize * 0x2000 + address as usize - 0xA000]
+    }
+
+    fn ram_read_16(&mut self, address: u16) -> u16 {
+        let n1 = self.read_8(address);
+        let n2 = self.read_8(address + 1);
+        u16::from_le_bytes([n1, n2])
     }
 }
 
@@ -145,23 +166,31 @@ impl Cartridge for CartridgeMBC1 {
             0x4000..=0x5FFF => self.select_ram_bank(value),
             0x6000..=0x7FFF => unimplemented!(),
             0xA000..=0xBFFF => self.ram_write_8(address, value),
-            _ => unimplemented!(),
+            _ => unreachable!(),
+        }
+    }
+
+    fn write_16(&mut self, address: u16, value: u16) {
+        match address {
+            0xA000..=0xBFFF => self.ram_write_16(address, value),
+            _ => unreachable!(),
         }
     }
 
     fn read_8(&self, address: u16) -> u8 {
         match address {
             0x0000..=0x1FFF => self.rom[address as usize],
-            0x4000..=0x7FFF => self.bank_rom_read_8(address),
+            0x4000..=0x7FFF => self.rom_read_8(address),
             0xA000..=0xBFFF => self.ram_read_8(address),
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
     }
 
     fn read_16(&self, address: u16) -> u16 {
         match address {
             0x0000..=0x7FFF => self.rom_read_16(address),
-            _ => unimplemented!(),
+            0xA000..=0xBFFF => self.ram_read_16(address),
+            _ => unreachable!(),
         }
     }
 }
