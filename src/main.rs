@@ -36,13 +36,14 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let args: Vec<String> = env::args().collect();
 
     let handle = std::thread::spawn(move || {
-        let mut dmg = DotMatrixGame::new_with_rom_path(&args[1], dmg_tx, gui_rx)?;
+        let mut dmg = DotMatrixGame::new_with_test_rom(&args[1], dmg_tx, gui_rx)?;
         dmg.start_game()
     });
 
+    let options = eframe::NativeOptions::default();
     eframe::run_native(
         "My egui App",
-        eframe::NativeOptions::default(),
+        options,
         Box::new(|cc| Box::new(Gui::new(cc, gui_tx, dmg_rx))),
     )?;
 

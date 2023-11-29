@@ -1,6 +1,7 @@
 use std::{fs, io, result};
 
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -38,6 +39,14 @@ pub fn from_file(path: &str) -> Result<Box<dyn Cartridge>> {
     }
 }
 
+// Test roms
+
+pub fn test_rom_from_file(path: &str) -> Result<Box<dyn Cartridge>> {
+    let rom = fs::read(path).map_err(|err| Error::Loading(err))?;
+
+    Ok(Box::new(CartridgeROM { rom, _rom_size: 0 }))
+}
+
 // ROM Cartridge
 
 pub struct CartridgeROM {
@@ -55,11 +64,11 @@ impl CartridgeROM {
 
 impl Cartridge for CartridgeROM {
     fn write_8(&mut self, _address: u16, _value: u8) {
-        unreachable!()
+        error!("Tried to write to ROM Cartridge !");
     }
 
     fn write_16(&mut self, _address: u16, _value: u16) {
-        unreachable!()
+        error!("Tried to write to ROM Cartridge !");
     }
 
     fn read_8(&self, address: u16) -> u8 {
@@ -79,8 +88,8 @@ impl Cartridge for CartridgeROM {
 pub struct CartridgeMBC1 {
     rom: Vec<u8>,
     ram: Vec<u8>,
-    rom_bank_count: u32,
-    ram_bank_count: u32,
+    _rom_bank_count: u32,
+    _ram_bank_count: u32,
     selected_rom_bank: u32,
     selected_ram_bank: u32,
 }
@@ -88,10 +97,10 @@ pub struct CartridgeMBC1 {
 impl CartridgeMBC1 {
     pub fn new(rom: Vec<u8>) -> Result<Self> {
         let rom_size = rom[0x0148];
-        let rom_bank_count = 1 << (rom_size + 1);
+        let _rom_bank_count = 1 << (rom_size + 1);
 
         let ram_size = rom[0x0149];
-        let (ram, ram_bank_count) = match ram_size {
+        let (ram, _ram_bank_count) = match ram_size {
             0x00 => (vec![0u8; 0], 0),
             0x02 => (vec![0u8; 0x2000], 1),
             0x03 => (vec![0u8; 0x4000], 4),
@@ -104,8 +113,8 @@ impl CartridgeMBC1 {
         Ok(Self {
             rom,
             ram,
-            rom_bank_count,
-            ram_bank_count,
+            _rom_bank_count,
+            _ram_bank_count,
             selected_rom_bank: 1,
             ..Default::default()
         })

@@ -4,6 +4,8 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
+use tracing::{debug, error};
+
 use crate::{
     cartridge,
     lr35902::{Register16, LR35902},
@@ -17,6 +19,8 @@ pub struct DotMatrixGame {
     clock_ticks: usize,
     tx: Sender<DmgMessage>,
     rx: Receiver<GuiMessage>,
+    step_mode: bool,
+    next_step: bool,
 }
 
 impl DotMatrixGame {
@@ -33,26 +37,73 @@ impl DotMatrixGame {
             clock_ticks: 0,
             tx,
             rx,
+            step_mode: false,
+            next_step: false,
         })
     }
 
-    fn handle_gui_messages(&mut self) -> anyhow::Result<()> {
-        while let Ok(result) = self.rx.try_recv() {
-            match result {
-                GuiMessage::Close => return Err(anyhow::Error::msg("")),
+    pub fn new_with_test_rom(
+        path: &str,
+        tx: Sender<DmgMessage>,
+        rx: Receiver<GuiMessage>,
+    ) -> anyhow::Result<Self> {
+        let cartridge = cartridge::test_rom_from_file(path)?;
+        let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
+        Ok(Self {
+            mmu: mmu.clone(),
+            cpu: LR35902::new(mmu),
+            clock_ticks: 0,
+            tx,
+            rx,
+            step_mode: true,
+            next_step: false,
+        })
+    }
+
+    fn handle_gui_messages(&mut self) -> bool {
+        while let Ok(message) = self.rx.try_recv() {
+            match message {
+                GuiMessage::Close => return false,
+                GuiMessage::NextInstruction => self.next_step = true,
                 _ => (),
-            }
+            };
         }
-        Ok(())
+        true
+    }
+
+    fn send_gui_messages(&mut self) {
+        let registers_copy = self.cpu.registers.clone();
+        if let Err(_) = self.tx.send(DmgMessage::RegistersStatus(registers_copy)) {
+            error!("Could not send Registers Message !");
+        }
+
+        let memory = self.mmu.borrow().get_memory_dump();
+        if let Err(_) = self.tx.send(DmgMessage::MemoryState(memory)) {
+            error!("Could not send Memory Message !");
+        }
     }
 
     pub fn start_game(&mut self) -> anyhow::Result<()> {
-        self.cpu.registers.set_16(Register16::PC, 0x0100);
+        self.mmu.borrow_mut().write_8(0xFF50, 1); // DISABLE BOOT ROM
 
         loop {
-            if let Err(_) = self.handle_gui_messages() {
+            if let false = self.handle_gui_messages() {
                 break;
             }
+
+            if self.step_mode && !self.next_step {
+                continue;
+            }
+
+            let _ticks = self.cpu.next_instruction();
+
+            if self.step_mode {
+                self.next_step = false;
+            }
+
+            self.send_gui_messages();
+
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
 
         Ok(())

@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use crate::lr35902::Registers;
 
 pub enum DmgMessage {
     RegistersStatus(Registers),
-    MemoryState([u8; 0xFFFF]),
+    MemoryState(Arc<[u8; 0xFFFF]>),
     DisassembledCode(Vec<String>),
 }
 
@@ -20,5 +22,6 @@ pub enum DmgButton {
 pub enum GuiMessage {
     ButtonPressed(DmgButton),
     ButtonReleased(DmgButton),
+    NextInstruction,
     Close,
 }

@@ -1,19 +1,31 @@
+use std::sync::Arc;
+
 use crate::cartridge::Cartridge;
 
 pub struct MemoryMapUnit {
-    memory: Vec<u8>,
+    memory: [u8; 0xFFFF],
     cartridge: Box<dyn Cartridge>,
+    boot_rom: &'static [u8; 256],
 }
 
 impl MemoryMapUnit {
     pub fn new(cartridge: Box<dyn Cartridge>) -> Self {
         MemoryMapUnit {
-            memory: vec![0u8; 0xFFFF],
+            memory: [0u8; 0xFFFF],
             cartridge,
+            boot_rom: include_bytes!("../dmg_boot.bin"),
         }
     }
 
+    fn boot_rom_enabled(&self) -> bool {
+        self.memory[0xFF50] == 0
+    }
+
     pub fn read_8(&self, address: u16) -> u8 {
+        if self.boot_rom_enabled() && address <= 0xFF {
+            return self.boot_rom[address as usize];
+        }
+
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
             _ => self.memory[address as usize],
@@ -21,6 +33,12 @@ impl MemoryMapUnit {
     }
 
     pub fn read_16(&self, address: u16) -> u16 {
+        if self.boot_rom_enabled() && address <= 0xFF {
+            let n1 = self.read_8(address);
+            let n2 = self.read_8(address + 1);
+            return u16::from_le_bytes([n1, n2]);
+        }
+
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_16(address),
             _ => {
@@ -47,5 +65,10 @@ impl MemoryMapUnit {
                 self.memory[(address + 1) as usize] = bytes[0];
             }
         }
+    }
+
+    pub fn get_memory_dump(&self) -> Arc<[u8; 0xFFFF]> {
+        let memory = self.memory.clone();
+        Arc::new(memory)
     }
 }

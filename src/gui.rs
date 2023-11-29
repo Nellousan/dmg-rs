@@ -1,11 +1,23 @@
-use std::sync::mpsc::{Receiver, Sender};
-
-use eframe::{
-    egui::{self, load::SizedTexture, RichText},
-    epaint::{Color32, ColorImage, TextureHandle},
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc,
 };
 
-use crate::thread::{DmgMessage, GuiMessage};
+use eframe::{
+    egui::{self, load::SizedTexture, Key},
+    epaint::{ColorImage, TextureHandle},
+};
+use tracing::error;
+
+use crate::{
+    lr35902::{Register16, Register8, Registers},
+    thread::{DmgMessage, GuiMessage},
+};
+
+struct State {
+    registers: Registers,
+    memory: Arc<[u8; 0xFFFF]>,
+}
 
 pub struct Gui {
     color_image: ColorImage,
@@ -13,6 +25,7 @@ pub struct Gui {
     texture: SizedTexture,
     tx: Sender<GuiMessage>,
     rx: Receiver<DmgMessage>,
+    state: State,
 }
 
 impl Gui {
@@ -34,31 +47,82 @@ impl Gui {
             texture,
             tx,
             rx,
+            state: State {
+                registers: Default::default(),
+                memory: Arc::new([0u8; 0xFFFF]),
+            },
+        }
+    }
+
+    fn handle_dmg_message(&mut self, _ctx: &egui::Context) {
+        while let Ok(message) = self.rx.try_recv() {
+            match message {
+                DmgMessage::RegistersStatus(registers) => self.state.registers = registers,
+                DmgMessage::MemoryState(state) => self.state.memory = state,
+                _ => (),
+            }
+        }
+    }
+
+    fn ui_registers(&self, ui: &mut egui::Ui) {
+        ui.vertical(|ui| {
+            ui.heading("Registers");
+            ui.horizontal(|ui| {
+                ui.monospace(format!(
+                    "A {:#04X}",
+                    self.state.registers.get_8(Register8::A)
+                ));
+                ui.monospace(format!(
+                    "F {:#04X}",
+                    self.state.registers.get_8(Register8::F)
+                ));
+            });
+            ui.horizontal(|ui| {
+                ui.monospace(format!(
+                    "BC {:#06X}",
+                    self.state.registers.get_16(Register16::BC)
+                ));
+                ui.monospace(format!(
+                    "DE {:#06X}",
+                    self.state.registers.get_16(Register16::DE)
+                ));
+            });
+            ui.horizontal(|ui| {
+                ui.monospace(format!(
+                    "HL {:#06X}",
+                    self.state.registers.get_16(Register16::HL)
+                ));
+                ui.monospace(format!(
+                    "SP {:#06X}",
+                    self.state.registers.get_16(Register16::SP)
+                ));
+            });
+            ui.monospace(format!(
+                "PC {:#06X}",
+                self.state.registers.get_16(Register16::PC)
+            ));
+        });
+    }
+
+    fn ui_ram(&self, ui: &mut egui::Ui) {
+        unimplemented!()
+    }
+
+    fn handle_inputs(&mut self, ctx: &egui::Context) {
+        if ctx.input(|i| i.key_pressed(Key::N)) {
+            if let Err(_) = self.tx.send(GuiMessage::NextInstruction) {
+                error!("Could not send Next Instruction message");
+            }
         }
     }
 }
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        for color in &mut self.color_image.pixels {
-            *color = Color32::from_rgb(
-                color.r().wrapping_add(3),
-                color.g().wrapping_add(2),
-                color.b().wrapping_add(1),
-            );
-        }
-
-        self.texture_handle
-            .set(self.color_image.clone(), Default::default());
-
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hello World!");
-            ui.label(RichText::new("Ouais").strong());
-            ui.horizontal(|ui| {
-                ui.label("hm");
-                ui.label("Label");
-                ui.image(self.texture);
-            });
+            self.handle_dmg_message(ctx);
+            self.handle_inputs(ctx);
+            self.ui_registers(ui);
         });
         ctx.request_repaint();
     }
