@@ -108,12 +108,12 @@ impl Gui {
     }
 
     fn format_ram_label(&self, section: &[u8], offset: u16) -> String {
-        if section.len() != 0x0FFF {
+        if section.len() != 0x1000 {
             return format!("Malformed section slice, length is {}", section.len());
         }
 
         let mut res = format!("      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
-        for i in 0..100 {
+        for i in 0..0x100 {
             let mut line = format!("\n{:0>4X} ", i * 0x10 + offset);
             for j in 0x0..0x10 {
                 line.push_str(format!(" {:02X}", section[(i * 0x10 + j) as usize]).as_str());
@@ -127,19 +127,31 @@ impl Gui {
     fn ui_ram(&self, ui: &mut egui::Ui) {
         ui.vertical(|ui| {
             ui.heading("Work Ram");
-            egui::ScrollArea::vertical()
-                .id_source("first")
-                .min_scrolled_height(128f32)
+            egui::CollapsingHeader::new("Expand")
+                .id_source("collapse1")
                 .show(ui, |ui| {
-                    ui.monospace(self.format_ram_label(&self.state.memory[0xC000..0xCFFF], 0xC000));
+                    egui::ScrollArea::vertical()
+                        .id_source("scroll1")
+                        .min_scrolled_height(128f32)
+                        .show(ui, |ui| {
+                            ui.monospace(
+                                self.format_ram_label(&self.state.memory[0xC000..0xD000], 0xC000),
+                            );
+                        });
                 });
             ui.add_space(10f32);
             ui.heading("External Ram");
-            egui::ScrollArea::vertical()
-                .id_source("second")
-                .min_scrolled_height(128f32)
+            egui::CollapsingHeader::new("Expand")
+                .id_source("collapse2")
                 .show(ui, |ui| {
-                    ui.monospace(self.format_ram_label(&self.state.memory[0xD000..0xDFFF], 0xD000));
+                    egui::ScrollArea::vertical()
+                        .id_source("scroll2")
+                        .min_scrolled_height(128f32)
+                        .show(ui, |ui| {
+                            ui.monospace(
+                                self.format_ram_label(&self.state.memory[0xD000..0xE000], 0xD000),
+                            );
+                        });
                 });
         });
     }
@@ -163,10 +175,10 @@ impl eframe::App for Gui {
         self.handle_inputs(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
+                self.ui_ram(ui);
                 ui.vertical(|ui| {
                     self.ui_registers(ui);
                 });
-                self.ui_ram(ui);
             })
         });
         ctx.request_repaint();
