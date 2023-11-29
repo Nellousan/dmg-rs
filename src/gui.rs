@@ -5,7 +5,7 @@ use std::sync::{
 
 use eframe::{
     egui::{self, load::SizedTexture, Key},
-    epaint::{ColorImage, TextureHandle},
+    epaint::{ColorImage, TextureHandle, Vec2},
 };
 use tracing::error;
 
@@ -39,6 +39,9 @@ impl Gui {
         let texture_handle =
             cc.egui_ctx
                 .load_texture("Image", color_image.clone(), Default::default());
+        cc.egui_ctx.set_pixels_per_point(1.3f32);
+        // cc.egui_ctx
+        //     .style_mut(|style| style.spacing.item_spacing = Vec2 { x: 5f32, y: 5f32 });
         let texture = egui::load::SizedTexture::from_handle(&texture_handle);
 
         Self {
@@ -104,7 +107,44 @@ impl Gui {
         });
     }
 
+    fn format_ram_label(&self, section: &[u8], offset: u16) -> String {
+        if section.len() != 0x0FFF {
+            return format!("Malformed section slice, length is {}", section.len());
+        }
+
+        let mut res = format!("      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
+        for i in 0..100 {
+            let mut line = format!("\n{:0>4X} ", i * 0x10 + offset);
+            for j in 0x0..0x10 {
+                line.push_str(format!(" {:02X}", section[(i * 0x10 + j) as usize]).as_str());
+            }
+            res.push_str(line.as_str());
+        }
+
+        res
+    }
+
     fn ui_ram(&self, ui: &mut egui::Ui) {
+        ui.vertical(|ui| {
+            ui.heading("Work Ram");
+            egui::ScrollArea::vertical()
+                .id_source("first")
+                .min_scrolled_height(128f32)
+                .show(ui, |ui| {
+                    ui.monospace(self.format_ram_label(&self.state.memory[0xC000..0xCFFF], 0xC000));
+                });
+            ui.add_space(10f32);
+            ui.heading("External Ram");
+            egui::ScrollArea::vertical()
+                .id_source("second")
+                .min_scrolled_height(128f32)
+                .show(ui, |ui| {
+                    ui.monospace(self.format_ram_label(&self.state.memory[0xD000..0xDFFF], 0xD000));
+                });
+        });
+    }
+
+    fn ui_disassemble(&self, ui: &mut egui::Ui) {
         unimplemented!()
     }
 
@@ -119,10 +159,15 @@ impl Gui {
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.handle_dmg_message(ctx);
+        self.handle_inputs(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.handle_dmg_message(ctx);
-            self.handle_inputs(ctx);
-            self.ui_registers(ui);
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    self.ui_registers(ui);
+                });
+                self.ui_ram(ui);
+            })
         });
         ctx.request_repaint();
     }
