@@ -5,7 +5,6 @@ use crate::lr35902::Registers;
 pub enum DmgMessage {
     RegistersStatus(Registers),
     MemoryState(Arc<[u8; 0xFFFF]>),
-    DisassembledCode(Vec<String>),
 }
 
 pub enum DmgButton {
@@ -23,5 +22,6 @@ pub enum GuiMessage {
     ButtonPressed(DmgButton),
     ButtonReleased(DmgButton),
     NextInstruction,
+    RequestState,
     Close,
 }

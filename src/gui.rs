@@ -203,5 +203,9 @@ impl eframe::App for Gui {
             })
         });
         ctx.request_repaint();
+
+        if let Err(_) = self.tx.send(GuiMessage::RequestState) {
+            error!("Could not send state request to DMG.")
+        }
     }
 }
