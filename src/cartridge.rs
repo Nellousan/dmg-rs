@@ -1,7 +1,7 @@
 use std::{fs, io, result};
 
 use thiserror::Error;
-use tracing::error;
+use tracing::{debug, error};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -22,6 +22,8 @@ pub trait Cartridge: Send {
     fn write_16(&mut self, address: u16, value: u16);
     fn read_8(&self, address: u16) -> u8;
     fn read_16(&self, address: u16) -> u16;
+    fn dump_rom(&self) -> Vec<u8>;
+    fn dump_ram(&self) -> Vec<u8>;
 }
 
 pub fn from_file(path: &str) -> Result<Box<dyn Cartridge>> {
@@ -44,7 +46,15 @@ pub fn from_file(path: &str) -> Result<Box<dyn Cartridge>> {
 pub fn test_rom_from_file(path: &str) -> Result<Box<dyn Cartridge>> {
     let rom = fs::read(path).map_err(|err| Error::Loading(err))?;
 
-    Ok(Box::new(CartridgeROM { rom, _rom_size: 0 }))
+    let mut new_rom = vec![0u8; 0x8000];
+    for (i, elem) in rom.iter().enumerate() {
+        new_rom[i] = *elem;
+    }
+
+    Ok(Box::new(CartridgeROM {
+        rom: new_rom,
+        _rom_size: 0,
+    }))
 }
 
 // ROM Cartridge
@@ -79,6 +89,14 @@ impl Cartridge for CartridgeROM {
         let n1 = self.read_8(address);
         let n2 = self.read_8(address + 1);
         u16::from_le_bytes([n1, n2])
+    }
+
+    fn dump_rom(&self) -> Vec<u8> {
+        self.rom.clone()
+    }
+
+    fn dump_ram(&self) -> Vec<u8> {
+        [0u8; 0x2000].to_vec()
     }
 }
 
@@ -201,5 +219,13 @@ impl Cartridge for CartridgeMBC1 {
             0xA000..=0xBFFF => self.ram_read_16(address),
             _ => unreachable!(),
         }
+    }
+
+    fn dump_rom(&self) -> Vec<u8> {
+        unimplemented!()
+    }
+
+    fn dump_ram(&self) -> Vec<u8> {
+        unimplemented!()
     }
 }

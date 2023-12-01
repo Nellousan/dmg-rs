@@ -85,6 +85,7 @@ impl DotMatrixGame {
 
     pub fn start_game(&mut self) -> anyhow::Result<()> {
         self.mmu.borrow_mut().write_8(0xFF50, 1); // DISABLE BOOT ROM
+        self.send_gui_messages();
 
         loop {
             if let false = self.handle_gui_messages() {

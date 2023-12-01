@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tracing::debug;
+
 use crate::cartridge::Cartridge;
 
 pub struct MemoryMapUnit {
@@ -68,7 +70,12 @@ impl MemoryMapUnit {
     }
 
     pub fn get_memory_dump(&self) -> Arc<[u8; 0xFFFF]> {
-        let memory = self.memory.clone();
+        let mut memory = self.memory.clone();
+        let rom = self.cartridge.dump_rom();
+
+        for (i, elem) in memory.as_mut_slice()[0x0000..0x8000].iter_mut().enumerate() {
+            *elem = rom[i];
+        }
         Arc::new(memory)
     }
 }

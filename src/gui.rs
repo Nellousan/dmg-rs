@@ -10,6 +10,7 @@ use eframe::{
 use tracing::error;
 
 use crate::{
+    disassembler,
     lr35902::{Register16, Register8, Registers},
     thread::{DmgMessage, GuiMessage},
 };
@@ -157,7 +158,25 @@ impl Gui {
     }
 
     fn ui_disassemble(&self, ui: &mut egui::Ui) {
-        unimplemented!()
+        let instrucions = disassembler::disassemble(
+            self.state.registers.get_16(Register16::PC),
+            &self.state.memory[0x0000..0x8000],
+            10,
+        );
+
+        egui::ScrollArea::vertical()
+            .id_source("scroll_disass")
+            .min_scrolled_height(128f32)
+            .show(ui, |ui| {
+                ui.vertical(|ui| {
+                    for instruction in instrucions.iter() {
+                        ui.monospace(format!(
+                            "{:04X} {}    ",
+                            instruction.address, instruction.mnemonic
+                        ));
+                    }
+                });
+            });
     }
 
     fn handle_inputs(&mut self, ctx: &egui::Context) {
@@ -178,6 +197,8 @@ impl eframe::App for Gui {
                 self.ui_ram(ui);
                 ui.vertical(|ui| {
                     self.ui_registers(ui);
+                    ui.heading("Disassembled Code.");
+                    self.ui_disassemble(ui);
                 });
             })
         });
