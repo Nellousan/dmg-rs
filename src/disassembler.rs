@@ -1,4 +1,5 @@
 #[derive(Default)]
+#[allow(dead_code)]
 pub struct Instruction {
     pub address: u16,
     pub opcode: u8,
@@ -47,16 +48,6 @@ impl Instruction {
             immediate_16: Some(immediate),
             ..Default::default()
         }
-    }
-
-    pub fn immediate_8(mut self, value: u8) -> Self {
-        self.immediate_8 = Some(value);
-        self
-    }
-
-    pub fn immediate_16(mut self, value: u16) -> Self {
-        self.immediate_16 = Some(value);
-        self
     }
 }
 

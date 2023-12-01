@@ -164,6 +164,7 @@ impl Gui {
             10,
         );
 
+        ui.heading("Disassembled Code.");
         egui::ScrollArea::vertical()
             .id_source("scroll_disass")
             .min_scrolled_height(128f32)
@@ -194,12 +195,11 @@ impl eframe::App for Gui {
         self.handle_inputs(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                self.ui_ram(ui);
                 ui.vertical(|ui| {
                     self.ui_registers(ui);
-                    ui.heading("Disassembled Code.");
                     self.ui_disassemble(ui);
                 });
+                self.ui_ram(ui);
             })
         });
         ctx.request_repaint();

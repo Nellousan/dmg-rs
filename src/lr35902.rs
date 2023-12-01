@@ -194,16 +194,16 @@ impl LR35902 {
             0x00 => 4,
             0x01 => self.load_16_immediate(Register16::BC),
             0x02 => self.load_8_at(Register16::BC, Register8::A),
-            0x03 => unimplemented!(),
-            0x04 => unimplemented!(),
+            0x03 => self.inc_16(Register16::BC),
+            0x04 => self.inc_8(Register8::B),
             0x05 => unimplemented!(),
             0x06 => self.load_8_immediate(Register8::B),
             0x07 => unimplemented!(),
             0x08 => self.load_16_at_immediate(Register16::SP),
-            0x09 => unimplemented!(),
+            0x09 => self.add_16(Register16::HL, Register16::BC),
             0x0A => self.load_8_from(Register8::A, Register16::BC),
             0x0B => unimplemented!(),
-            0x0C => unimplemented!(),
+            0x0C => self.inc_8(Register8::C),
             0x0D => unimplemented!(),
             0x0E => self.load_8_immediate(Register8::C),
             0x0F => unimplemented!(),
@@ -212,16 +212,16 @@ impl LR35902 {
             0x10 => unimplemented!(),
             0x11 => self.load_16_immediate(Register16::DE),
             0x12 => self.load_8_at(Register16::DE, Register8::A),
-            0x13 => unimplemented!(),
-            0x14 => unimplemented!(),
+            0x13 => self.inc_16(Register16::DE),
+            0x14 => self.inc_8(Register8::D),
             0x15 => unimplemented!(),
             0x16 => self.load_8_immediate(Register8::D),
             0x17 => unimplemented!(),
             0x18 => unimplemented!(),
-            0x19 => unimplemented!(),
+            0x19 => self.add_16(Register16::HL, Register16::DE),
             0x1A => self.load_8_from(Register8::A, Register16::DE),
             0x1B => unimplemented!(),
-            0x1C => unimplemented!(),
+            0x1C => self.inc_8(Register8::E),
             0x1D => unimplemented!(),
             0x1E => self.load_8_immediate(Register8::E),
             0x1F => unimplemented!(),
@@ -230,16 +230,16 @@ impl LR35902 {
             0x20 => unimplemented!(),
             0x21 => self.load_16_immediate(Register16::HL),
             0x22 => self.load_8_at_increment(Register16::HL, Register8::A),
-            0x23 => unimplemented!(),
-            0x24 => unimplemented!(),
+            0x23 => self.inc_16(Register16::HL),
+            0x24 => self.inc_8(Register8::H),
             0x25 => unimplemented!(),
             0x26 => self.load_8_immediate(Register8::H),
             0x27 => unimplemented!(),
             0x28 => unimplemented!(),
-            0x29 => unimplemented!(),
+            0x29 => self.add_16(Register16::HL, Register16::HL),
             0x2A => self.load_8_from_increment(Register8::A, Register16::HL),
             0x2B => unimplemented!(),
-            0x2C => unimplemented!(),
+            0x2C => self.inc_8(Register8::L),
             0x2D => unimplemented!(),
             0x2E => self.load_8_immediate(Register8::L),
             0x2F => unimplemented!(),
@@ -248,16 +248,16 @@ impl LR35902 {
             0x30 => unimplemented!(),
             0x31 => self.load_16_immediate(Register16::SP),
             0x32 => self.load_8_at_decrement(Register16::HL, Register8::A),
-            0x33 => unimplemented!(),
-            0x34 => unimplemented!(),
+            0x33 => self.inc_16(Register16::SP),
+            0x34 => self.inc_8_at(Register16::HL),
             0x35 => unimplemented!(),
             0x36 => self.load_8_immediate_at(Register16::HL),
             0x37 => unimplemented!(),
             0x38 => unimplemented!(),
-            0x39 => unimplemented!(),
+            0x39 => self.add_16(Register16::HL, Register16::SP),
             0x3A => self.load_8_from_decrement(Register8::A, Register16::HL),
             0x3B => unimplemented!(),
-            0x3C => unimplemented!(),
+            0x3C => self.inc_8(Register8::A),
             0x3D => unimplemented!(),
             0x3E => self.load_8_immediate(Register8::A),
             0x3F => unimplemented!(),
@@ -495,6 +495,7 @@ impl LR35902 {
         12
     }
 
+    // TODO: maybe bugged h_flag
     fn load_16_add_immediate(&mut self, destination: Register16, source: Register16) -> usize {
         let immediate = self.pc_next_8();
         let value = self.registers.get_16(source);
@@ -503,7 +504,7 @@ impl LR35902 {
         let h_flag = res > 0x0F;
         let c_flag = value.checked_add(immediate as u16) == None;
 
-        let value = (value as i16).wrapping_add(immediate as i16) as u16;
+        let value = value.wrapping_add_signed(immediate as i8 as i16);
         self.registers.set_16(destination, value);
 
         self.registers.set_flags(false, false, h_flag, c_flag);
@@ -588,5 +589,77 @@ impl LR35902 {
         let res = self.add_8_carry_set_flags(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
         4
+    }
+
+    fn inc_8(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+
+        let h_flag = (value & 0x0F) + 1 > 0x0F;
+        let res = value.wrapping_add(1);
+        let z_flag = res == 0;
+
+        self.registers.set_zero_flag(z_flag);
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(h_flag);
+        self.registers.set_8(destination, res);
+        4
+    }
+
+    fn inc_8_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+
+        let h_flag = (value & 0x0F) + 1 > 0x0F;
+        let res = value.wrapping_add(1);
+        let z_flag = res == 0;
+
+        self.registers.set_zero_flag(z_flag);
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(h_flag);
+        self.mmu.borrow_mut().write_8(address, res);
+        12
+    }
+
+    fn add_16(&mut self, destination: Register16, source: Register16) -> usize {
+        let d_value = self.registers.get_16(destination);
+        let s_value = self.registers.get_16(source);
+
+        let h_flag = (d_value & 0x000F) + (s_value + 0x000F) > 0x0F;
+        let mut c_flag = false;
+        if let None = d_value.checked_add(s_value) {
+            c_flag = true;
+        }
+        let res = d_value.wrapping_add(s_value);
+
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(h_flag);
+        self.registers.set_carry_flag(c_flag);
+        self.registers.set_16(destination, res);
+        8
+    }
+
+    // TODO: Maybe bugged h_flag
+    fn add_16_immediate(&mut self, destination: Register16) -> usize {
+        let d_value = self.registers.get_16(destination);
+        let value = self.pc_next_8() as i8;
+
+        let h_flag = (d_value & 0x000F).wrapping_add_signed((value & 0x0F) as i16) > 0x0F;
+        let mut c_flag = false;
+        if let None = d_value.checked_add_signed(value as i16) {
+            c_flag = true;
+        }
+        let res = d_value.wrapping_add_signed(value as i16);
+
+        self.registers.set_flags(false, false, h_flag, c_flag);
+        self.registers.set_16(destination, res);
+        16
+    }
+
+    fn inc_16(&mut self, destination: Register16) -> usize {
+        let value = self.registers.get_16(destination);
+        let res = value.wrapping_add(1u16);
+
+        self.registers.set_16(destination, res);
+        8
     }
 }
