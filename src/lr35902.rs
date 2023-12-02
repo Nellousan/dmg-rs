@@ -562,6 +562,15 @@ impl LR35902 {
         8
     }
 
+    fn add_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+
+        let res = self.add_8_carry_set_flags(a_value, value, 0);
+        self.registers.set_8(Register8::A, res);
+        8
+    }
+
     fn add_carry_8(&mut self, source: Register8) -> usize {
         let value = self.registers.get_8(source);
         let a_value = self.registers.get_8(Register8::A);
@@ -588,7 +597,21 @@ impl LR35902 {
 
         let res = self.add_8_carry_set_flags(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
-        4
+        8
+    }
+
+    fn add_carry_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+        let carry = if self.registers.get_carry_flag() {
+            1u8
+        } else {
+            0u8
+        };
+
+        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        self.registers.set_8(Register8::A, res);
+        8
     }
 
     fn inc_8(&mut self, destination: Register8) -> usize {
@@ -660,6 +683,74 @@ impl LR35902 {
         let res = value.wrapping_add(1u16);
 
         self.registers.set_16(destination, res);
+        8
+    }
+
+    // SUB & SBC helper function to avoid code duplication
+    fn sub_8_carry_set_flag(&mut self, destination: u8, source: u8, carry: u8) -> u8 {
+        let mut h_flag = (destination & 0x0F).checked_sub(source & 0x0F) == None;
+        let h_res = (destination & 0x0F).wrapping_sub(source & 0x0F);
+        if let None = h_res.checked_sub(carry) {
+            h_flag = true;
+        }
+
+        let mut c_flag = destination.checked_sub(source) == None;
+        let mut res = destination.wrapping_sub(source);
+        if let None = res.checked_sub(carry) {
+            c_flag = true;
+        }
+        res = res.wrapping_sub(carry);
+
+        let z_flag = res == 0;
+        self.registers.set_flags(z_flag, true, h_flag, c_flag);
+        res
+    }
+
+    fn sub_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+
+        let res = self.sub_8_carry_set_flag(a_value, value, 0);
+        self.registers.set_8(Register8::A, res);
+        4
+    }
+
+    fn sub_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+
+        let res = self.sub_8_carry_set_flag(a_value, value, 0);
+        self.registers.set_8(Register8::A, res);
+        8
+    }
+
+    fn sub_carry_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+        let carry = if self.registers.get_carry_flag() {
+            1u8
+        } else {
+            0u8
+        };
+
+        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        self.registers.set_8(Register8::A, res);
+        4
+    }
+
+    fn sub_carry_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+        let carry = if self.registers.get_carry_flag() {
+            1u8
+        } else {
+            0u8
+        };
+
+        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        self.registers.set_8(Register8::A, res);
         8
     }
 }
