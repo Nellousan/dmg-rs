@@ -196,15 +196,15 @@ impl LR35902 {
             0x02 => self.load_8_at(Register16::BC, Register8::A),
             0x03 => self.inc_16(Register16::BC),
             0x04 => self.inc_8(Register8::B),
-            0x05 => unimplemented!(),
+            0x05 => self.dec_8(Register8::B),
             0x06 => self.load_8_immediate(Register8::B),
             0x07 => unimplemented!(),
             0x08 => self.load_16_at_immediate(Register16::SP),
             0x09 => self.add_16(Register16::HL, Register16::BC),
             0x0A => self.load_8_from(Register8::A, Register16::BC),
-            0x0B => unimplemented!(),
+            0x0B => self.dec_16(Register16::BC),
             0x0C => self.inc_8(Register8::C),
-            0x0D => unimplemented!(),
+            0x0D => self.dec_8(Register8::C),
             0x0E => self.load_8_immediate(Register8::C),
             0x0F => unimplemented!(),
 
@@ -214,15 +214,15 @@ impl LR35902 {
             0x12 => self.load_8_at(Register16::DE, Register8::A),
             0x13 => self.inc_16(Register16::DE),
             0x14 => self.inc_8(Register8::D),
-            0x15 => unimplemented!(),
+            0x15 => self.dec_8(Register8::D),
             0x16 => self.load_8_immediate(Register8::D),
             0x17 => unimplemented!(),
             0x18 => unimplemented!(),
             0x19 => self.add_16(Register16::HL, Register16::DE),
             0x1A => self.load_8_from(Register8::A, Register16::DE),
-            0x1B => unimplemented!(),
+            0x1B => self.dec_16(Register16::DE),
             0x1C => self.inc_8(Register8::E),
-            0x1D => unimplemented!(),
+            0x1D => self.dec_8(Register8::E),
             0x1E => self.load_8_immediate(Register8::E),
             0x1F => unimplemented!(),
 
@@ -232,15 +232,15 @@ impl LR35902 {
             0x22 => self.load_8_at_increment(Register16::HL, Register8::A),
             0x23 => self.inc_16(Register16::HL),
             0x24 => self.inc_8(Register8::H),
-            0x25 => unimplemented!(),
+            0x25 => self.dec_8(Register8::H),
             0x26 => self.load_8_immediate(Register8::H),
             0x27 => unimplemented!(),
             0x28 => unimplemented!(),
             0x29 => self.add_16(Register16::HL, Register16::HL),
             0x2A => self.load_8_from_increment(Register8::A, Register16::HL),
-            0x2B => unimplemented!(),
+            0x2B => self.dec_16(Register16::HL),
             0x2C => self.inc_8(Register8::L),
-            0x2D => unimplemented!(),
+            0x2D => self.dec_8(Register8::L),
             0x2E => self.load_8_immediate(Register8::L),
             0x2F => unimplemented!(),
 
@@ -250,15 +250,15 @@ impl LR35902 {
             0x32 => self.load_8_at_decrement(Register16::HL, Register8::A),
             0x33 => self.inc_16(Register16::SP),
             0x34 => self.inc_8_at(Register16::HL),
-            0x35 => unimplemented!(),
+            0x35 => self.dec_8_at(Register16::HL),
             0x36 => self.load_8_immediate_at(Register16::HL),
             0x37 => unimplemented!(),
             0x38 => unimplemented!(),
             0x39 => self.add_16(Register16::HL, Register16::SP),
             0x3A => self.load_8_from_decrement(Register8::A, Register16::HL),
-            0x3B => unimplemented!(),
+            0x3B => self.dec_16(Register16::SP),
             0x3C => self.inc_8(Register8::A),
-            0x3D => unimplemented!(),
+            0x3D => self.dec_8(Register8::A),
             0x3E => self.load_8_immediate(Register8::A),
             0x3F => unimplemented!(),
 
@@ -352,6 +352,59 @@ impl LR35902 {
             0x8E => self.add_carry_8_from(Register16::HL),
             0x8F => self.add_carry_8(Register8::A),
 
+            // Opcodes 9x
+            0x90 => self.sub_8(Register8::B),
+            0x91 => self.sub_8(Register8::C),
+            0x92 => self.sub_8(Register8::D),
+            0x93 => self.sub_8(Register8::E),
+            0x94 => self.sub_8(Register8::H),
+            0x95 => self.sub_8(Register8::L),
+            0x96 => self.sub_8_from(Register16::HL),
+            0x97 => self.sub_8(Register8::A),
+            0x98 => self.sub_carry_8(Register8::B),
+            0x99 => self.sub_carry_8(Register8::C),
+            0x9A => self.sub_carry_8(Register8::D),
+            0x9B => self.sub_carry_8(Register8::E),
+            0x9C => self.sub_carry_8(Register8::H),
+            0x9D => self.sub_carry_8(Register8::L),
+            0x9E => self.sub_carry_8_from(Register16::HL),
+            0x9F => self.sub_carry_8(Register8::A),
+
+            // Opcodes Ax
+            0xA0 => self.and_8(Register8::B),
+            0xA1 => self.and_8(Register8::C),
+            0xA2 => self.and_8(Register8::D),
+            0xA3 => self.and_8(Register8::E),
+            0xA4 => self.and_8(Register8::H),
+            0xA5 => self.and_8(Register8::L),
+            0xA6 => self.and_8_from(Register16::HL),
+            0xA7 => self.and_8(Register8::A),
+            0xA8 => self.xor_8(Register8::B),
+            0xA9 => self.xor_8(Register8::C),
+            0xAA => self.xor_8(Register8::D),
+            0xAB => self.xor_8(Register8::E),
+            0xAC => self.xor_8(Register8::H),
+            0xAD => self.xor_8(Register8::L),
+            0xAE => self.xor_8_from(Register16::HL),
+            0xAF => self.xor_8(Register8::A),
+
+            // Opcodes Bx
+            0xB0 => self.or_8(Register8::B),
+            0xB1 => self.or_8(Register8::C),
+            0xB2 => self.or_8(Register8::D),
+            0xB3 => self.or_8(Register8::E),
+            0xB4 => self.or_8(Register8::H),
+            0xB5 => self.or_8(Register8::L),
+            0xB6 => self.or_8_from(Register16::HL),
+            0xB7 => self.or_8(Register8::A),
+            // 0xB8 => self.cp_8(Register8::B),
+            // 0xB9 => self.cp_8(Register8::C),
+            // 0xBA => self.cp_8(Register8::D),
+            // 0xBB => self.cp_8(Register8::E),
+            // 0xBC => self.cp_8(Register8::H),
+            // 0xBD => self.cp_8(Register8::L),
+            // 0xBE => self.cp_8_from(Register16::HL),
+            // 0xBF => self.cp_8(Register8::A),
             _ => unimplemented!(),
         }
     }
@@ -410,14 +463,14 @@ impl LR35902 {
     fn load_8_from_increment(&mut self, destination: Register8, source: Register16) -> usize {
         self.load_8_from(destination, source);
         self.registers
-            .set_16(source, self.registers.get_16(source) + 1);
+            .set_16(source, self.registers.get_16(source).wrapping_add(1));
         8
     }
 
     fn load_8_from_decrement(&mut self, destination: Register8, source: Register16) -> usize {
         self.load_8_from(destination, source);
         self.registers
-            .set_16(source, self.registers.get_16(source) - 1);
+            .set_16(source, self.registers.get_16(source).wrapping_sub(1));
         8
     }
 
@@ -530,7 +583,7 @@ impl LR35902 {
     // Arithmetic instructions
 
     // Helper functions for ADD and ADC to avoid code duplication
-    fn add_8_carry_set_flags(&mut self, destination: u8, source: u8, carry: u8) -> u8 {
+    fn _add_8_inner(&mut self, destination: u8, source: u8, carry: u8) -> u8 {
         let h_flag = (destination & 0x0F) + (source & 0x0F) + carry > 0x0F;
         let mut c_flag = destination.checked_add(source) == None;
         let mut res = destination.wrapping_add(source);
@@ -547,7 +600,7 @@ impl LR35902 {
         let value = self.registers.get_8(source);
         let a_value = self.registers.get_8(Register8::A);
 
-        let res = self.add_8_carry_set_flags(a_value, value, 0);
+        let res = self._add_8_inner(a_value, value, 0);
         self.registers.set_8(Register8::A, res);
         4
     }
@@ -557,7 +610,7 @@ impl LR35902 {
         let value = self.mmu.borrow().read_8(address);
         let a_value = self.registers.get_8(Register8::A);
 
-        let res = self.add_8_carry_set_flags(a_value, value, 0);
+        let res = self._add_8_inner(a_value, value, 0);
         self.registers.set_8(Register8::A, res);
         8
     }
@@ -566,7 +619,7 @@ impl LR35902 {
         let value = self.pc_next_8();
         let a_value = self.registers.get_8(Register8::A);
 
-        let res = self.add_8_carry_set_flags(a_value, value, 0);
+        let res = self._add_8_inner(a_value, value, 0);
         self.registers.set_8(Register8::A, res);
         8
     }
@@ -580,7 +633,7 @@ impl LR35902 {
             0u8
         };
 
-        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        let res = self._add_8_inner(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
         4
     }
@@ -595,7 +648,7 @@ impl LR35902 {
             0u8
         };
 
-        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        let res = self._add_8_inner(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
         8
     }
@@ -609,7 +662,7 @@ impl LR35902 {
             0u8
         };
 
-        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        let res = self._add_8_inner(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
         8
     }
@@ -687,7 +740,7 @@ impl LR35902 {
     }
 
     // SUB & SBC helper function to avoid code duplication
-    fn sub_8_carry_set_flag(&mut self, destination: u8, source: u8, carry: u8) -> u8 {
+    fn _sub_8_inner(&mut self, destination: u8, source: u8, carry: u8) -> u8 {
         let mut h_flag = (destination & 0x0F).checked_sub(source & 0x0F) == None;
         let h_res = (destination & 0x0F).wrapping_sub(source & 0x0F);
         if let None = h_res.checked_sub(carry) {
@@ -710,7 +763,7 @@ impl LR35902 {
         let value = self.registers.get_8(source);
         let a_value = self.registers.get_8(Register8::A);
 
-        let res = self.sub_8_carry_set_flag(a_value, value, 0);
+        let res = self._sub_8_inner(a_value, value, 0);
         self.registers.set_8(Register8::A, res);
         4
     }
@@ -720,7 +773,16 @@ impl LR35902 {
         let value = self.mmu.borrow().read_8(address);
         let a_value = self.registers.get_8(Register8::A);
 
-        let res = self.sub_8_carry_set_flag(a_value, value, 0);
+        let res = self._sub_8_inner(a_value, value, 0);
+        self.registers.set_8(Register8::A, res);
+        8
+    }
+
+    fn sub_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+
+        let res = self._sub_8_inner(a_value, value, 0);
         self.registers.set_8(Register8::A, res);
         8
     }
@@ -734,7 +796,7 @@ impl LR35902 {
             0u8
         };
 
-        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        let res = self._add_8_inner(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
         4
     }
@@ -749,8 +811,158 @@ impl LR35902 {
             0u8
         };
 
-        let res = self.add_8_carry_set_flags(a_value, value, carry);
+        let res = self._add_8_inner(a_value, value, carry);
         self.registers.set_8(Register8::A, res);
+        8
+    }
+
+    fn sub_carry_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+        let carry = if self.registers.get_carry_flag() {
+            1u8
+        } else {
+            0u8
+        };
+
+        let res = self._add_8_inner(a_value, value, carry);
+        self.registers.set_8(Register8::A, res);
+        8
+    }
+
+    fn dec_8(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+
+        let h_flag = (value & 0x0F).checked_sub(1) == None;
+        let res = value.wrapping_sub(1);
+        let z_flag = res == 0;
+
+        self.registers.set_zero_flag(z_flag);
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(h_flag);
+        self.registers.set_8(destination, res);
+        4
+    }
+
+    fn dec_8_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+
+        let h_flag = (value & 0x0F).checked_sub(1) == None;
+        let res = value.wrapping_sub(1);
+        let z_flag = res == 0;
+
+        self.registers.set_zero_flag(z_flag);
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(h_flag);
+        self.mmu.borrow_mut().write_8(address, res);
+        8
+    }
+
+    fn dec_16(&mut self, destination: Register16) -> usize {
+        let value = self.registers.get_16(destination);
+        let res = value.wrapping_sub(1);
+        self.registers.set_16(destination, res);
+        8
+    }
+
+    // AND helper to avoid code duplication
+    fn _and_8_inner(&mut self, destination: u8, source: u8) {
+        let res = destination & source;
+        let z_flag = res == 0;
+
+        self.registers.set_flags(z_flag, false, true, false);
+        self.registers.set_8(Register8::A, res);
+    }
+
+    fn and_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._and_8_inner(a_value, value);
+        4
+    }
+
+    fn and_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._and_8_inner(a_value, value);
+        8
+    }
+
+    fn and_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._and_8_inner(a_value, value);
+        8
+    }
+
+    fn _xor_8_inner(&mut self, destination: u8, source: u8) {
+        let res = destination ^ source;
+        let z_flag = res == 0;
+
+        self.registers.set_flags(z_flag, false, false, false);
+        self.registers.set_8(Register8::A, res);
+    }
+
+    fn xor_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._xor_8_inner(a_value, value);
+        4
+    }
+
+    fn xor_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._xor_8_inner(a_value, value);
+        8
+    }
+
+    fn xor_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._xor_8_inner(a_value, value);
+        8
+    }
+
+    fn _or_8_inner(&mut self, destination: u8, source: u8) {
+        let res = destination | source;
+        let z_flag = res == 0;
+
+        self.registers.set_flags(z_flag, false, false, false);
+        self.registers.set_8(Register8::A, res);
+    }
+
+    fn or_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._or_8_inner(a_value, value);
+        4
+    }
+
+    fn or_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._or_8_inner(a_value, value);
+        8
+    }
+
+    fn or_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+
+        self._or_8_inner(a_value, value);
         8
     }
 }
