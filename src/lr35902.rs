@@ -397,14 +397,14 @@ impl LR35902 {
             0xB5 => self.or_8(Register8::L),
             0xB6 => self.or_8_from(Register16::HL),
             0xB7 => self.or_8(Register8::A),
-            // 0xB8 => self.cp_8(Register8::B),
-            // 0xB9 => self.cp_8(Register8::C),
-            // 0xBA => self.cp_8(Register8::D),
-            // 0xBB => self.cp_8(Register8::E),
-            // 0xBC => self.cp_8(Register8::H),
-            // 0xBD => self.cp_8(Register8::L),
-            // 0xBE => self.cp_8_from(Register16::HL),
-            // 0xBF => self.cp_8(Register8::A),
+            0xB8 => self.cp_8(Register8::B),
+            0xB9 => self.cp_8(Register8::C),
+            0xBA => self.cp_8(Register8::D),
+            0xBB => self.cp_8(Register8::E),
+            0xBC => self.cp_8(Register8::H),
+            0xBD => self.cp_8(Register8::L),
+            0xBE => self.cp_8_from(Register16::HL),
+            0xBF => self.cp_8(Register8::A),
             _ => unimplemented!(),
         }
     }
@@ -963,6 +963,31 @@ impl LR35902 {
         let a_value = self.registers.get_8(Register8::A);
 
         self._or_8_inner(a_value, value);
+        8
+    }
+
+    fn cp_8(&mut self, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let a_value = self.registers.get_8(Register8::A);
+
+        let _res = self._sub_8_inner(a_value, value, 0);
+        4
+    }
+
+    fn cp_8_from(&mut self, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let a_value = self.registers.get_8(Register8::A);
+
+        let _res = self._sub_8_inner(a_value, value, 0);
+        8
+    }
+
+    fn cp_8_immediate(&mut self) -> usize {
+        let value = self.pc_next_8();
+        let a_value = self.registers.get_8(Register8::A);
+
+        let _res = self._sub_8_inner(a_value, value, 0);
         8
     }
 }
