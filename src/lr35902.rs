@@ -217,7 +217,7 @@ impl LR35902 {
             0x15 => self.dec_8(Register8::D),
             0x16 => self.load_8_immediate(Register8::D),
             0x17 => unimplemented!(),
-            0x18 => unimplemented!(),
+            0x18 => self.jump_if_immediate_8(true),
             0x19 => self.add_16(Register16::HL, Register16::DE),
             0x1A => self.load_8_from(Register8::A, Register16::DE),
             0x1B => self.dec_16(Register16::DE),
@@ -227,40 +227,40 @@ impl LR35902 {
             0x1F => unimplemented!(),
 
             // Opcodes 2x
-            0x20 => unimplemented!(),
+            0x20 => self.jump_if_immediate_8(!self.registers.get_zero_flag()),
             0x21 => self.load_16_immediate(Register16::HL),
             0x22 => self.load_8_at_increment(Register16::HL, Register8::A),
             0x23 => self.inc_16(Register16::HL),
             0x24 => self.inc_8(Register8::H),
             0x25 => self.dec_8(Register8::H),
             0x26 => self.load_8_immediate(Register8::H),
-            0x27 => unimplemented!(),
-            0x28 => unimplemented!(),
+            0x27 => self.decimal_adjust(),
+            0x28 => self.jump_if_immediate_8(self.registers.get_zero_flag()),
             0x29 => self.add_16(Register16::HL, Register16::HL),
             0x2A => self.load_8_from_increment(Register8::A, Register16::HL),
             0x2B => self.dec_16(Register16::HL),
             0x2C => self.inc_8(Register8::L),
             0x2D => self.dec_8(Register8::L),
             0x2E => self.load_8_immediate(Register8::L),
-            0x2F => unimplemented!(),
+            0x2F => self.complement(),
 
             // Opcodes 3x
-            0x30 => unimplemented!(),
+            0x30 => self.jump_if_immediate_8(!self.registers.get_carry_flag()),
             0x31 => self.load_16_immediate(Register16::SP),
             0x32 => self.load_8_at_decrement(Register16::HL, Register8::A),
             0x33 => self.inc_16(Register16::SP),
             0x34 => self.inc_8_at(Register16::HL),
             0x35 => self.dec_8_at(Register16::HL),
             0x36 => self.load_8_immediate_at(Register16::HL),
-            0x37 => unimplemented!(),
-            0x38 => unimplemented!(),
+            0x37 => self.set_carry_flag(),
+            0x38 => self.jump_if_immediate_8(self.registers.get_carry_flag()),
             0x39 => self.add_16(Register16::HL, Register16::SP),
             0x3A => self.load_8_from_decrement(Register8::A, Register16::HL),
             0x3B => self.dec_16(Register16::SP),
             0x3C => self.inc_8(Register8::A),
             0x3D => self.dec_8(Register8::A),
             0x3E => self.load_8_immediate(Register8::A),
-            0x3F => unimplemented!(),
+            0x3F => self.complement_carry_flag(),
 
             // Opcodes 4x
             0x40 => self.load_8(Register8::B, Register8::B),
@@ -989,5 +989,91 @@ impl LR35902 {
 
         let _res = self._sub_8_inner(a_value, value, 0);
         8
+    }
+
+    fn set_carry_flag(&mut self) -> usize {
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(false);
+        self.registers.set_carry_flag(true);
+        4
+    }
+
+    fn complement_carry_flag(&mut self) -> usize {
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(false);
+        let carry = self.registers.get_carry_flag();
+        self.registers.set_carry_flag(!carry);
+        4
+    }
+
+    fn complement(&mut self) -> usize {
+        let value = self.registers.get_8(Register8::A);
+        self.registers.set_8(Register8::A, !value);
+        self.registers.set_n_flag(true);
+        self.registers.set_h_flag(true);
+        4
+    }
+
+    fn decimal_adjust(&mut self) -> usize {
+        let mut offset = 0u8;
+        let mut carry = false;
+
+        let value = self.registers.get_8(Register8::A);
+        let h_flag = self.registers.get_h_flag();
+        let c_flag = self.registers.get_carry_flag();
+        let n_flag = self.registers.get_n_flag();
+
+        if (!n_flag && value & 0x0F > 0x09) || h_flag {
+            offset |= 0x06;
+        }
+
+        if (!n_flag && value > 0x99) || c_flag {
+            offset |= 0x60;
+            carry = true;
+        }
+
+        let result = if n_flag {
+            value.wrapping_sub(offset)
+        } else {
+            value.wrapping_add(offset)
+        };
+
+        self.registers.set_zero_flag(result == 0);
+        self.registers.set_h_flag(false);
+        self.registers.set_carry_flag(carry);
+        self.registers.set_8(Register8::A, result);
+
+        4
+    }
+
+    // Control fow
+
+    fn jump(&mut self, source: Register16) -> usize {
+        let value = self.registers.get_16(source);
+        self.registers.set_16(Register16::PC, value);
+
+        4
+    }
+
+    fn jump_if_immediate_16(&mut self, condition: bool) -> usize {
+        let value = self.pc_next_16();
+        if !condition {
+            return 12;
+        }
+
+        self.registers.set_16(Register16::PC, value);
+        16
+    }
+
+    fn jump_if_immediate_8(&mut self, condition: bool) -> usize {
+        let value = self.pc_next_8() as i8 as i16;
+        if !condition {
+            return 8;
+        }
+
+        let pc = self.registers.get_16(Register16::PC);
+        let pc = pc.wrapping_add_signed(value);
+        self.registers.set_16(Register16::PC, pc);
+        12
     }
 }
