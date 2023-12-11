@@ -177,6 +177,8 @@ impl Registers {
 pub struct LR35902 {
     pub registers: Registers,
     mmu: Rc<RefCell<MemoryMapUnit>>,
+    ime: bool,
+    halted: bool,
 }
 
 impl LR35902 {
@@ -184,6 +186,8 @@ impl LR35902 {
         LR35902 {
             mmu,
             registers: Default::default(),
+            ime: false,
+            halted: false,
         }
     }
 
@@ -1075,5 +1079,65 @@ impl LR35902 {
         let pc = pc.wrapping_add_signed(value);
         self.registers.set_16(Register16::PC, pc);
         12
+    }
+
+    fn call(&mut self, condition: bool) -> usize {
+        let address = self.pc_next_16();
+        if !condition {
+            return 12;
+        }
+
+        self.push(Register16::PC);
+        self.registers.set_16(Register16::PC, address);
+        24
+    }
+
+    fn call_vec(&mut self, address: u16) -> usize {
+        self.push(Register16::PC);
+        self.registers.set_16(Register16::PC, address);
+        16
+    }
+
+    fn ret(&mut self) -> usize {
+        self.pop(Register16::PC);
+        16
+    }
+
+    fn ret_if(&mut self, condition: bool) -> usize {
+        if !condition {
+            return 8;
+        }
+
+        self.pop(Register16::PC);
+        20
+    }
+
+    fn ret_interrupt(&mut self) -> usize {
+        self.ime = true;
+        self.pop(Register16::PC);
+        16
+    }
+
+    // Miscellaneous instructions
+
+    fn stop(&mut self) -> usize {
+        self.pc_next_8();
+        4
+    }
+
+    fn disable_interrupts(&mut self) -> usize {
+        self.ime = false;
+        4
+    }
+
+    // TODO: flag is supposed to be set *after* the next instruction
+    fn enable_interrupts(&mut self) -> usize {
+        self.ime = true;
+        4
+    }
+
+    fn halt(&mut self) -> usize {
+        self.halted = true;
+        4
     }
 }
