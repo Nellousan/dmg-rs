@@ -202,7 +202,7 @@ impl LR35902 {
             0x04 => self.inc_8(Register8::B),
             0x05 => self.dec_8(Register8::B),
             0x06 => self.load_8_immediate(Register8::B),
-            0x07 => unimplemented!(),
+            0x07 => self.rotate_left_accumulator(false),
             0x08 => self.load_16_at_immediate(Register16::SP),
             0x09 => self.add_16(Register16::HL, Register16::BC),
             0x0A => self.load_8_from(Register8::A, Register16::BC),
@@ -210,7 +210,7 @@ impl LR35902 {
             0x0C => self.inc_8(Register8::C),
             0x0D => self.dec_8(Register8::C),
             0x0E => self.load_8_immediate(Register8::C),
-            0x0F => unimplemented!(),
+            0x0F => self.rotate_right_accumulator(false),
 
             // Opcodes 1x
             0x10 => unimplemented!(),
@@ -220,7 +220,7 @@ impl LR35902 {
             0x14 => self.inc_8(Register8::D),
             0x15 => self.dec_8(Register8::D),
             0x16 => self.load_8_immediate(Register8::D),
-            0x17 => unimplemented!(),
+            0x17 => self.rotate_left_accumulator(true),
             0x18 => self.jump_if_immediate_8(true),
             0x19 => self.add_16(Register16::HL, Register16::DE),
             0x1A => self.load_8_from(Register8::A, Register16::DE),
@@ -228,7 +228,7 @@ impl LR35902 {
             0x1C => self.inc_8(Register8::E),
             0x1D => self.dec_8(Register8::E),
             0x1E => self.load_8_immediate(Register8::E),
-            0x1F => unimplemented!(),
+            0x1F => self.rotate_right_accumulator(true),
 
             // Opcodes 2x
             0x20 => self.jump_if_immediate_8(!self.registers.get_zero_flag()),
@@ -409,7 +409,78 @@ impl LR35902 {
             0xBD => self.cp_8(Register8::L),
             0xBE => self.cp_8_from(Register16::HL),
             0xBF => self.cp_8(Register8::A),
-            _ => unimplemented!(),
+
+            // Opcodes Cx
+            0xC0 => self.ret_if(!self.registers.get_zero_flag()),
+            0xC1 => self.pop(Register16::BC),
+            0xC2 => self.jump_if_immediate_16(!self.registers.get_zero_flag()),
+            0xC3 => self.jump_if_immediate_16(true),
+            0xC4 => self.call(!self.registers.get_zero_flag()),
+            0xC5 => self.push(Register16::BC),
+            0xC6 => self.add_8_immediate(),
+            0xC7 => self.call_vec(0x00u16),
+            0xC8 => self.ret_if(self.registers.get_zero_flag()),
+            0xC9 => self.ret(),
+            0xCA => self.jump_if_immediate_16(self.registers.get_zero_flag()),
+            0xCB => unimplemented!(),
+            0xCC => self.call(self.registers.get_zero_flag()),
+            0xCD => self.call(true),
+            0xCE => self.add_carry_8_immediate(),
+            0xCF => self.call_vec(0x08u16),
+
+            // Opcodes Dx
+            0xD0 => self.ret_if(!self.registers.get_carry_flag()),
+            0xD1 => self.pop(Register16::DE),
+            0xD2 => self.jump_if_immediate_16(!self.registers.get_carry_flag()),
+            0xD3 => unreachable!(),
+            0xD4 => self.call(!self.registers.get_carry_flag()),
+            0xD5 => self.push(Register16::DE),
+            0xD6 => self.sub_8_immediate(),
+            0xD7 => self.call_vec(0x10u16),
+            0xD8 => self.ret_if(self.registers.get_carry_flag()),
+            0xD9 => self.ret_interrupt(),
+            0xDA => self.jump_if_immediate_16(self.registers.get_carry_flag()),
+            0xDB => unreachable!(),
+            0xDC => self.call(self.registers.get_carry_flag()),
+            0xDD => unreachable!(),
+            0xDE => self.sub_carry_8_immediate(),
+            0xDF => self.call_vec(0x18u16),
+
+            // Opcodes Ex
+            0xE0 => self.load_8_at_io_immediate(Register8::A),
+            0xE1 => self.pop(Register16::HL),
+            0xE2 => self.load_8_at_io(Register8::C, Register8::A),
+            0xE3 => unreachable!(),
+            0xE4 => unreachable!(),
+            0xE5 => self.push(Register16::HL),
+            0xE6 => self.and_8_immediate(),
+            0xE7 => self.call_vec(0x20u16),
+            0xE8 => self.add_16_immediate(Register16::SP),
+            0xE9 => self.jump(Register16::HL),
+            0xEA => self.load_8_immediate(Register8::A),
+            0xEB => unreachable!(),
+            0xEC => unreachable!(),
+            0xED => unreachable!(),
+            0xEE => self.xor_8_immediate(),
+            0xEF => self.call_vec(0x28u16),
+
+            // Opcodes Fx
+            0xF0 => self.load_8_from_io_immediate(Register8::A),
+            0xF1 => self.pop(Register16::AF),
+            0xF2 => self.load_8_from_io(Register8::C, Register8::A),
+            0xF3 => self.disable_interrupts(),
+            0xF4 => unreachable!(),
+            0xF5 => self.push(Register16::AF),
+            0xF6 => self.or_8_immediate(),
+            0xF7 => self.call_vec(0x30u16),
+            0xF8 => self.load_16_add_immediate(Register16::HL, Register16::SP),
+            0xF9 => self.jump(Register16::HL),
+            0xFA => self.load_8_from_immediate(Register8::A),
+            0xFB => self.enable_interrupts(),
+            0xFC => unreachable!(),
+            0xFD => unreachable!(),
+            0xFE => self.cp_8_immediate(),
+            0xFF => self.call_vec(0x38u16),
         }
     }
 
@@ -1138,6 +1209,38 @@ impl LR35902 {
 
     fn halt(&mut self) -> usize {
         self.halted = true;
+        4
+    }
+
+    // Bit shift instructions
+
+    fn rotate_left_accumulator(&mut self, with_carry: bool) -> usize {
+        let value = self.registers.get_8(Register8::A);
+        let carry = self.registers.get_carry_flag();
+        let r_carry = value & 0x80 != 0;
+        let mut value = value.rotate_left(1);
+
+        if with_carry {
+            let bit: u8 = if carry { 1u8 } else { 0u8 };
+            value = value & !(1u8 << 0) | (bit << 0);
+        }
+        self.registers.set_8(Register8::A, value);
+        self.registers.set_flags(false, false, false, r_carry);
+        4
+    }
+
+    fn rotate_right_accumulator(&mut self, with_carry: bool) -> usize {
+        let value = self.registers.get_8(Register8::A);
+        let carry = self.registers.get_carry_flag();
+        let r_carry = value & 0x01 != 0;
+        let mut value = value.rotate_right(1);
+
+        if with_carry {
+            let bit: u8 = if carry { 1u8 } else { 0u8 };
+            value = value & !(1u8 << 7) | (bit << 7);
+        }
+        self.registers.set_8(Register8::A, value);
+        self.registers.set_flags(false, false, false, r_carry);
         4
     }
 }
