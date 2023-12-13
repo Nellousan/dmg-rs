@@ -213,7 +213,7 @@ impl LR35902 {
             0x0F => self.rotate_right_accumulator(false),
 
             // Opcodes 1x
-            0x10 => unimplemented!(),
+            0x10 => self.stop(),
             0x11 => self.load_16_immediate(Register16::DE),
             0x12 => self.load_8_at(Register16::DE, Register8::A),
             0x13 => self.inc_16(Register16::DE),
@@ -327,7 +327,7 @@ impl LR35902 {
             0x73 => self.load_8_at(Register16::HL, Register8::E),
             0x74 => self.load_8_at(Register16::HL, Register8::H),
             0x75 => self.load_8_at(Register16::HL, Register8::L),
-            0x76 => unimplemented!(),
+            0x76 => self.halt(),
             0x77 => self.load_8_at(Register16::HL, Register8::A),
             0x78 => self.load_8(Register8::A, Register8::B),
             0x79 => self.load_8(Register8::A, Register8::C),
@@ -422,7 +422,7 @@ impl LR35902 {
             0xC8 => self.ret_if(self.registers.get_zero_flag()),
             0xC9 => self.ret(),
             0xCA => self.jump_if_immediate_16(self.registers.get_zero_flag()),
-            0xCB => unimplemented!(),
+            0xCB => self.prefix_cb(),
             0xCC => self.call(self.registers.get_zero_flag()),
             0xCD => self.call(true),
             0xCE => self.add_carry_8_immediate(),
@@ -457,7 +457,7 @@ impl LR35902 {
             0xE7 => self.call_vec(0x20u16),
             0xE8 => self.add_16_immediate(Register16::SP),
             0xE9 => self.jump(Register16::HL),
-            0xEA => self.load_8_immediate(Register8::A),
+            0xEA => self.load_8_at_immediate(Register8::A),
             0xEB => unreachable!(),
             0xEC => unreachable!(),
             0xED => unreachable!(),
@@ -474,13 +474,57 @@ impl LR35902 {
             0xF6 => self.or_8_immediate(),
             0xF7 => self.call_vec(0x30u16),
             0xF8 => self.load_16_add_immediate(Register16::HL, Register16::SP),
-            0xF9 => self.jump(Register16::HL),
+            0xF9 => self.load_16(Register16::SP, Register16::HL),
             0xFA => self.load_8_from_immediate(Register8::A),
             0xFB => self.enable_interrupts(),
             0xFC => unreachable!(),
             0xFD => unreachable!(),
             0xFE => self.cp_8_immediate(),
             0xFF => self.call_vec(0x38u16),
+        }
+    }
+
+    fn prefix_cb(&mut self) -> usize {
+        let opcode = self.pc_next_8();
+
+        match opcode {
+            // Opcodes 0x
+            0x00 => self.rotate_left(Register8::B),
+            0x01 => self.rotate_left(Register8::C),
+            0x02 => self.rotate_left(Register8::D),
+            0x03 => self.rotate_left(Register8::E),
+            0x04 => self.rotate_left(Register8::H),
+            0x05 => self.rotate_left(Register8::L),
+            0x06 => self.rotate_left_at(Register16::HL),
+            0x07 => self.rotate_left(Register8::A),
+            0x08 => self.rotate_right(Register8::B),
+            0x09 => self.rotate_right(Register8::C),
+            0x0A => self.rotate_right(Register8::D),
+            0x0B => self.rotate_right(Register8::E),
+            0x0C => self.rotate_right(Register8::H),
+            0x0D => self.rotate_right(Register8::L),
+            0x0E => self.rotate_right_at(Register16::HL),
+            0x0F => self.rotate_right(Register8::A),
+
+            // Opcodes 1x
+            0x10 => self.rotate_left_carry(Register8::B),
+            0x11 => self.rotate_left_carry(Register8::C),
+            0x12 => self.rotate_left_carry(Register8::D),
+            0x13 => self.rotate_left_carry(Register8::E),
+            0x14 => self.rotate_left_carry(Register8::H),
+            0x15 => self.rotate_left_carry(Register8::L),
+            0x16 => self.rotate_left_carry_at(Register16::HL),
+            0x17 => self.rotate_left_carry(Register8::A),
+            0x18 => self.rotate_right_carry(Register8::B),
+            0x19 => self.rotate_right_carry(Register8::C),
+            0x1A => self.rotate_right_carry(Register8::D),
+            0x1B => self.rotate_right_carry(Register8::E),
+            0x1C => self.rotate_right_carry(Register8::H),
+            0x1D => self.rotate_right_carry(Register8::L),
+            0x1E => self.rotate_right_carry_at(Register16::HL),
+            0x1F => self.rotate_right_carry(Register8::A),
+
+            _ => unimplemented!(),
         }
     }
 
@@ -1242,5 +1286,101 @@ impl LR35902 {
         self.registers.set_8(Register8::A, value);
         self.registers.set_flags(false, false, false, r_carry);
         4
+    }
+
+    // Prefix operations
+
+    fn _rotate_left_inner(&mut self, destination: u8, with_carry: bool) -> u8 {
+        let carry = self.registers.get_carry_flag();
+        let r_carry = destination & 0x80 != 0;
+        let mut value = destination.rotate_left(1);
+
+        if with_carry {
+            let bit: u8 = if carry { 1u8 } else { 0u8 };
+            value = value & !(1u8 << 0) | (bit << 0);
+        }
+        self.registers.set_flags(value == 0, false, false, r_carry);
+        value
+    }
+
+    fn rotate_left(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let result = self._rotate_left_inner(value, false);
+        self.registers.set_8(destination, result);
+
+        8
+    }
+
+    fn rotate_left_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let result = self._rotate_left_inner(value, false);
+        self.mmu.borrow_mut().write_8(address, result);
+
+        16
+    }
+
+    fn rotate_left_carry(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let result = self._rotate_left_inner(value, true);
+        self.registers.set_8(destination, result);
+
+        8
+    }
+
+    fn rotate_left_carry_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let result = self._rotate_left_inner(value, true);
+        self.mmu.borrow_mut().write_8(address, result);
+
+        16
+    }
+
+    fn _rotate_right_inner(&mut self, destination: u8, with_carry: bool) -> u8 {
+        let carry = self.registers.get_carry_flag();
+        let r_carry = destination & 0x01 != 0;
+        let mut value = destination.rotate_right(1);
+
+        if with_carry {
+            let bit: u8 = if carry { 1u8 } else { 0u8 };
+            value = value & !(1u8 << 7) | (bit << 7);
+        }
+        self.registers.set_flags(value == 0, false, false, r_carry);
+        value
+    }
+
+    fn rotate_right(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let result = self._rotate_right_inner(value, false);
+        self.registers.set_8(destination, result);
+
+        8
+    }
+
+    fn rotate_right_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let result = self._rotate_right_inner(value, false);
+        self.mmu.borrow_mut().write_8(address, result);
+
+        16
+    }
+
+    fn rotate_right_carry(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let result = self._rotate_right_inner(value, true);
+        self.registers.set_8(destination, result);
+
+        8
+    }
+
+    fn rotate_right_carry_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let result = self._rotate_right_inner(value, true);
+        self.mmu.borrow_mut().write_8(address, result);
+
+        16
     }
 }
