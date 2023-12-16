@@ -1383,4 +1383,117 @@ impl LR35902 {
 
         16
     }
+
+    fn shift_left(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let carry = value & 0x80 != 0;
+        let result = value << 1;
+
+        self.registers.set_8(destination, result);
+        self.registers.set_flags(result == 0, false, false, carry);
+
+        8
+    }
+
+    fn shift_left_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let carry = value & 0x80 != 0;
+        let result = value << 1;
+
+        self.mmu.borrow_mut().write_8(address, result);
+        self.registers.set_flags(result == 0, false, false, carry);
+
+        16
+    }
+
+    fn shift_right(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let carry = value & 0x01 != 0;
+        let result = (value >> 1) & !(1u8 << 7) | (value & 0x80);
+
+        self.registers.set_8(destination, result);
+        self.registers.set_flags(result == 0, false, false, carry);
+
+        8
+    }
+
+    fn shift_right_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let carry = value & 0x01 != 0;
+        let result = (value >> 1) & !(1u8 << 7) | (value & 0x80);
+
+        self.mmu.borrow_mut().write_8(address, result);
+        self.registers.set_flags(result == 0, false, false, carry);
+
+        16
+    }
+
+    fn swap(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let result: u8 = (value << 4) | (value >> 4);
+
+        self.registers.set_8(destination, result);
+        self.registers.set_flags(result == 0, false, false, false);
+
+        8
+    }
+
+    fn swap_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let result: u8 = (value << 4) | (value >> 4);
+
+        self.mmu.borrow_mut().write_8(address, result);
+        self.registers.set_flags(result == 0, false, false, false);
+
+        16
+    }
+
+    fn shift_right_logic(&mut self, destination: Register8) -> usize {
+        let value = self.registers.get_8(destination);
+        let carry = value & 0x01 != 0;
+        let result = value >> 1;
+
+        self.registers.set_8(destination, result);
+        self.registers.set_flags(result == 0, false, false, carry);
+
+        8
+    }
+
+    fn shift_right_logic_at(&mut self, destination: Register16) -> usize {
+        let address = self.registers.get_16(destination);
+        let value = self.mmu.borrow().read_8(address);
+        let carry = value & 0x01 != 0;
+        let result = value >> 1;
+
+        self.mmu.borrow_mut().write_8(address, result);
+        self.registers.set_flags(result == 0, false, false, carry);
+
+        16
+    }
+
+    fn bit(&mut self, n: u8, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let result = (value >> n) & 0x01 != 0;
+
+        self.registers.set_zero_flag(result);
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(true);
+
+        8
+    }
+
+    fn bit_at(&mut self, n: u8, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let result = (value >> n) & 0x01 != 0;
+
+        self.registers.set_zero_flag(result);
+        self.registers.set_n_flag(false);
+        self.registers.set_h_flag(true);
+
+        12
+    }
 }
