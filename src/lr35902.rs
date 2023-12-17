@@ -524,7 +524,257 @@ impl LR35902 {
             0x1E => self.rotate_right_carry_at(Register16::HL),
             0x1F => self.rotate_right_carry(Register8::A),
 
-            _ => unimplemented!(),
+            // Opcodes 2x
+            0x20 => self.shift_left(Register8::B),
+            0x21 => self.shift_left(Register8::C),
+            0x22 => self.shift_left(Register8::D),
+            0x23 => self.shift_left(Register8::E),
+            0x24 => self.shift_left(Register8::H),
+            0x25 => self.shift_left(Register8::L),
+            0x26 => self.shift_left_at(Register16::HL),
+            0x27 => self.shift_left(Register8::A),
+            0x28 => self.shift_right(Register8::B),
+            0x29 => self.shift_right(Register8::C),
+            0x2A => self.shift_right(Register8::D),
+            0x2B => self.shift_right(Register8::E),
+            0x2C => self.shift_right(Register8::H),
+            0x2D => self.shift_right(Register8::L),
+            0x2E => self.shift_right_at(Register16::HL),
+            0x2F => self.shift_right(Register8::A),
+
+            // Opcodes 3x
+            0x30 => self.swap(Register8::B),
+            0x31 => self.swap(Register8::C),
+            0x32 => self.swap(Register8::D),
+            0x33 => self.swap(Register8::E),
+            0x34 => self.swap(Register8::H),
+            0x35 => self.swap(Register8::L),
+            0x36 => self.swap_at(Register16::HL),
+            0x37 => self.swap(Register8::A),
+            0x38 => self.shift_right_logic(Register8::B),
+            0x39 => self.shift_right_logic(Register8::C),
+            0x3A => self.shift_right_logic(Register8::D),
+            0x3B => self.shift_right_logic(Register8::E),
+            0x3C => self.shift_right_logic(Register8::H),
+            0x3D => self.shift_right_logic(Register8::L),
+            0x3E => self.shift_right_logic_at(Register16::HL),
+            0x3F => self.shift_right_logic(Register8::A),
+
+            // Opcodes 4x
+            0x40 => self.bit(0, Register8::B),
+            0x41 => self.bit(0, Register8::C),
+            0x42 => self.bit(0, Register8::D),
+            0x43 => self.bit(0, Register8::E),
+            0x44 => self.bit(0, Register8::H),
+            0x45 => self.bit(0, Register8::L),
+            0x46 => self.bit_at(0, Register16::HL),
+            0x47 => self.bit(0, Register8::A),
+            0x48 => self.bit(1, Register8::B),
+            0x49 => self.bit(1, Register8::C),
+            0x4A => self.bit(1, Register8::D),
+            0x4B => self.bit(1, Register8::E),
+            0x4C => self.bit(1, Register8::H),
+            0x4D => self.bit(1, Register8::L),
+            0x4E => self.bit_at(1, Register16::HL),
+            0x4F => self.bit(1, Register8::A),
+
+            // Opcodes 5x
+            0x50 => self.bit(2, Register8::B),
+            0x51 => self.bit(2, Register8::C),
+            0x52 => self.bit(2, Register8::D),
+            0x53 => self.bit(2, Register8::E),
+            0x54 => self.bit(2, Register8::H),
+            0x55 => self.bit(2, Register8::L),
+            0x56 => self.bit_at(2, Register16::HL),
+            0x57 => self.bit(2, Register8::A),
+            0x58 => self.bit(3, Register8::B),
+            0x59 => self.bit(3, Register8::C),
+            0x5A => self.bit(3, Register8::D),
+            0x5B => self.bit(3, Register8::E),
+            0x5C => self.bit(3, Register8::H),
+            0x5D => self.bit(3, Register8::L),
+            0x5E => self.bit_at(3, Register16::HL),
+            0x5F => self.bit(3, Register8::A),
+
+            // Opcodes 6x
+            0x60 => self.bit(4, Register8::B),
+            0x61 => self.bit(4, Register8::C),
+            0x62 => self.bit(4, Register8::D),
+            0x63 => self.bit(4, Register8::E),
+            0x64 => self.bit(4, Register8::H),
+            0x65 => self.bit(4, Register8::L),
+            0x66 => self.bit_at(4, Register16::HL),
+            0x67 => self.bit(4, Register8::A),
+            0x68 => self.bit(5, Register8::B),
+            0x69 => self.bit(5, Register8::C),
+            0x6A => self.bit(5, Register8::D),
+            0x6B => self.bit(5, Register8::E),
+            0x6C => self.bit(5, Register8::H),
+            0x6D => self.bit(5, Register8::L),
+            0x6E => self.bit_at(5, Register16::HL),
+            0x6F => self.bit(5, Register8::A),
+
+            // Opcodes 7x
+            0x70 => self.bit(6, Register8::B),
+            0x71 => self.bit(6, Register8::C),
+            0x72 => self.bit(6, Register8::D),
+            0x73 => self.bit(6, Register8::E),
+            0x74 => self.bit(6, Register8::H),
+            0x75 => self.bit(6, Register8::L),
+            0x76 => self.bit_at(6, Register16::HL),
+            0x77 => self.bit(6, Register8::A),
+            0x78 => self.bit(7, Register8::B),
+            0x79 => self.bit(7, Register8::C),
+            0x7A => self.bit(7, Register8::D),
+            0x7B => self.bit(7, Register8::E),
+            0x7C => self.bit(7, Register8::H),
+            0x7D => self.bit(7, Register8::L),
+            0x7E => self.bit_at(7, Register16::HL),
+            0x7F => self.bit(7, Register8::A),
+
+            // Opcodes 8x
+            0x80 => self.reset_bit(0, Register8::B),
+            0x81 => self.reset_bit(0, Register8::C),
+            0x82 => self.reset_bit(0, Register8::D),
+            0x83 => self.reset_bit(0, Register8::E),
+            0x84 => self.reset_bit(0, Register8::H),
+            0x85 => self.reset_bit(0, Register8::L),
+            0x86 => self.reset_bit_at(0, Register16::HL),
+            0x87 => self.reset_bit(0, Register8::A),
+            0x88 => self.reset_bit(1, Register8::B),
+            0x89 => self.reset_bit(1, Register8::C),
+            0x8A => self.reset_bit(1, Register8::D),
+            0x8B => self.reset_bit(1, Register8::E),
+            0x8C => self.reset_bit(1, Register8::H),
+            0x8D => self.reset_bit(1, Register8::L),
+            0x8E => self.reset_bit_at(1, Register16::HL),
+            0x8F => self.reset_bit(1, Register8::A),
+
+            // Opcodes 9x
+            0x90 => self.reset_bit(2, Register8::B),
+            0x91 => self.reset_bit(2, Register8::C),
+            0x92 => self.reset_bit(2, Register8::D),
+            0x93 => self.reset_bit(2, Register8::E),
+            0x94 => self.reset_bit(2, Register8::H),
+            0x95 => self.reset_bit(2, Register8::L),
+            0x96 => self.reset_bit_at(2, Register16::HL),
+            0x97 => self.reset_bit(2, Register8::A),
+            0x98 => self.reset_bit(3, Register8::B),
+            0x99 => self.reset_bit(3, Register8::C),
+            0x9A => self.reset_bit(3, Register8::D),
+            0x9B => self.reset_bit(3, Register8::E),
+            0x9C => self.reset_bit(3, Register8::H),
+            0x9D => self.reset_bit(3, Register8::L),
+            0x9E => self.reset_bit_at(3, Register16::HL),
+            0x9F => self.reset_bit(3, Register8::A),
+
+            // Opcodes Ax
+            0xA0 => self.reset_bit(4, Register8::B),
+            0xA1 => self.reset_bit(4, Register8::C),
+            0xA2 => self.reset_bit(4, Register8::D),
+            0xA3 => self.reset_bit(4, Register8::E),
+            0xA4 => self.reset_bit(4, Register8::H),
+            0xA5 => self.reset_bit(4, Register8::L),
+            0xA6 => self.reset_bit_at(4, Register16::HL),
+            0xA7 => self.reset_bit(4, Register8::A),
+            0xA8 => self.reset_bit(5, Register8::B),
+            0xA9 => self.reset_bit(5, Register8::C),
+            0xAA => self.reset_bit(5, Register8::D),
+            0xAB => self.reset_bit(5, Register8::E),
+            0xAC => self.reset_bit(5, Register8::H),
+            0xAD => self.reset_bit(5, Register8::L),
+            0xAE => self.reset_bit_at(5, Register16::HL),
+            0xAF => self.reset_bit(5, Register8::A),
+
+            // Opcodes Bx
+            0xB0 => self.reset_bit(6, Register8::B),
+            0xB1 => self.reset_bit(6, Register8::C),
+            0xB2 => self.reset_bit(6, Register8::D),
+            0xB3 => self.reset_bit(6, Register8::E),
+            0xB4 => self.reset_bit(6, Register8::H),
+            0xB5 => self.reset_bit(6, Register8::L),
+            0xB6 => self.reset_bit_at(6, Register16::HL),
+            0xB7 => self.reset_bit(6, Register8::A),
+            0xB8 => self.reset_bit(7, Register8::B),
+            0xB9 => self.reset_bit(7, Register8::C),
+            0xBA => self.reset_bit(7, Register8::D),
+            0xBB => self.reset_bit(7, Register8::E),
+            0xBC => self.reset_bit(7, Register8::H),
+            0xBD => self.reset_bit(7, Register8::L),
+            0xBE => self.reset_bit_at(7, Register16::HL),
+            0xBF => self.reset_bit(7, Register8::A),
+
+            // Opcodes Cx
+            0xC0 => self.set_bit(0, Register8::B),
+            0xC1 => self.set_bit(0, Register8::C),
+            0xC2 => self.set_bit(0, Register8::D),
+            0xC3 => self.set_bit(0, Register8::E),
+            0xC4 => self.set_bit(0, Register8::H),
+            0xC5 => self.set_bit(0, Register8::L),
+            0xC6 => self.set_bit_at(0, Register16::HL),
+            0xC7 => self.set_bit(0, Register8::A),
+            0xC8 => self.set_bit(1, Register8::B),
+            0xC9 => self.set_bit(1, Register8::C),
+            0xCA => self.set_bit(1, Register8::D),
+            0xCB => self.set_bit(1, Register8::E),
+            0xCC => self.set_bit(1, Register8::H),
+            0xCD => self.set_bit(1, Register8::L),
+            0xCE => self.set_bit_at(1, Register16::HL),
+            0xCF => self.set_bit(1, Register8::A),
+
+            // Opcodes Dx
+            0xD0 => self.set_bit(2, Register8::B),
+            0xD1 => self.set_bit(2, Register8::C),
+            0xD2 => self.set_bit(2, Register8::D),
+            0xD3 => self.set_bit(2, Register8::E),
+            0xD4 => self.set_bit(2, Register8::H),
+            0xD5 => self.set_bit(2, Register8::L),
+            0xD6 => self.set_bit_at(2, Register16::HL),
+            0xD7 => self.set_bit(2, Register8::A),
+            0xD8 => self.set_bit(3, Register8::B),
+            0xD9 => self.set_bit(3, Register8::C),
+            0xDA => self.set_bit(3, Register8::D),
+            0xDB => self.set_bit(3, Register8::E),
+            0xDC => self.set_bit(3, Register8::H),
+            0xDD => self.set_bit(3, Register8::L),
+            0xDE => self.set_bit_at(3, Register16::HL),
+            0xDF => self.set_bit(3, Register8::A),
+
+            // Opcodes Ex
+            0xE0 => self.set_bit(4, Register8::B),
+            0xE1 => self.set_bit(4, Register8::C),
+            0xE2 => self.set_bit(4, Register8::D),
+            0xE3 => self.set_bit(4, Register8::E),
+            0xE4 => self.set_bit(4, Register8::H),
+            0xE5 => self.set_bit(4, Register8::L),
+            0xE6 => self.set_bit_at(4, Register16::HL),
+            0xE7 => self.set_bit(4, Register8::A),
+            0xE8 => self.set_bit(5, Register8::B),
+            0xE9 => self.set_bit(5, Register8::C),
+            0xEA => self.set_bit(5, Register8::D),
+            0xEB => self.set_bit(5, Register8::E),
+            0xEC => self.set_bit(5, Register8::H),
+            0xED => self.set_bit(5, Register8::L),
+            0xEE => self.set_bit_at(5, Register16::HL),
+            0xEF => self.set_bit(5, Register8::A),
+
+            // Opcodes Fx
+            0xF0 => self.set_bit(6, Register8::B),
+            0xF1 => self.set_bit(6, Register8::C),
+            0xF2 => self.set_bit(6, Register8::D),
+            0xF3 => self.set_bit(6, Register8::E),
+            0xF4 => self.set_bit(6, Register8::H),
+            0xF5 => self.set_bit(6, Register8::L),
+            0xF6 => self.set_bit_at(6, Register16::HL),
+            0xF7 => self.set_bit(6, Register8::A),
+            0xF8 => self.set_bit(7, Register8::B),
+            0xF9 => self.set_bit(7, Register8::C),
+            0xFA => self.set_bit(7, Register8::D),
+            0xFB => self.set_bit(7, Register8::E),
+            0xFC => self.set_bit(7, Register8::H),
+            0xFD => self.set_bit(7, Register8::L),
+            0xFE => self.set_bit_at(7, Register16::HL),
+            0xFF => self.set_bit(7, Register8::A),
         }
     }
 
@@ -1495,5 +1745,39 @@ impl LR35902 {
         self.registers.set_h_flag(true);
 
         12
+    }
+
+    fn reset_bit(&mut self, n: u8, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let result = value & !(1 << n);
+
+        self.registers.set_8(source, result);
+        8
+    }
+
+    fn reset_bit_at(&mut self, n: u8, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let result = value & !(1 << n);
+
+        self.mmu.borrow_mut().write_8(address, result);
+        16
+    }
+
+    fn set_bit(&mut self, n: u8, source: Register8) -> usize {
+        let value = self.registers.get_8(source);
+        let result = value | (1 << n);
+
+        self.registers.set_8(source, result);
+        8
+    }
+
+    fn set_bit_at(&mut self, n: u8, source: Register16) -> usize {
+        let address = self.registers.get_16(source);
+        let value = self.mmu.borrow().read_8(address);
+        let result = value | (1 << n);
+
+        self.mmu.borrow_mut().write_8(address, result);
+        16
     }
 }
