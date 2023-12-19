@@ -5,7 +5,7 @@ use tracing::debug;
 use crate::cartridge::Cartridge;
 
 pub struct MemoryMapUnit {
-    memory: [u8; 0xFFFF],
+    memory: [u8; 0x10000],
     cartridge: Box<dyn Cartridge>,
     boot_rom: &'static [u8; 256],
 }
@@ -13,7 +13,7 @@ pub struct MemoryMapUnit {
 impl MemoryMapUnit {
     pub fn new(cartridge: Box<dyn Cartridge>) -> Self {
         MemoryMapUnit {
-            memory: [0u8; 0xFFFF],
+            memory: [0u8; 0x10000],
             cartridge,
             boot_rom: include_bytes!("../dmg_boot.bin"),
         }
@@ -64,12 +64,12 @@ impl MemoryMapUnit {
             _ => {
                 let bytes = value.to_le_bytes();
                 self.memory[address as usize] = bytes[0];
-                self.memory[(address + 1) as usize] = bytes[0];
+                self.memory[(address + 1) as usize] = bytes[1];
             }
         }
     }
 
-    pub fn get_memory_dump(&self) -> Arc<[u8; 0xFFFF]> {
+    pub fn get_memory_dump(&self) -> Arc<[u8; 0x10000]> {
         let mut memory = self.memory.clone();
         let rom = self.cartridge.dump_rom();
 

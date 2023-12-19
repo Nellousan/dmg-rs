@@ -4,7 +4,7 @@ use crate::lr35902::Registers;
 
 pub enum DmgMessage {
     RegistersStatus(Registers),
-    MemoryState(Arc<[u8; 0xFFFF]>),
+    MemoryState(Arc<[u8; 0x10000]>),
 }
 
 pub enum DmgButton {

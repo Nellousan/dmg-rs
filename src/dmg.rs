@@ -96,7 +96,7 @@ impl DotMatrixGame {
                 continue;
             }
 
-            let _ticks = self.cpu.next_instruction();
+            let _ticks = self.cpu.step();
 
             if self.step_mode {
                 self.next_step = false;

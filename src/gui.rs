@@ -17,7 +17,7 @@ use crate::{
 
 struct State {
     registers: Registers,
-    memory: Arc<[u8; 0xFFFF]>,
+    memory: Arc<[u8; 0x10000]>,
 }
 
 pub struct Gui {
@@ -53,7 +53,7 @@ impl Gui {
             rx,
             state: State {
                 registers: Default::default(),
-                memory: Arc::new([0u8; 0xFFFF]),
+                memory: Arc::new([0u8; 0x10000]),
             },
         }
     }

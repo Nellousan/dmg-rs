@@ -181,6 +181,12 @@ pub struct LR35902 {
     halted: bool,
 }
 
+const VBLANKBIT: u8 = 1u8 << 0u8;
+const LCDBIT: u8 = 1u8 << 1u8;
+const TIMERBIT: u8 = 1u8 << 2u8;
+const SERIALBIT: u8 = 1u8 << 3u8;
+const JOYPADBIT: u8 = 1u8 << 4u8;
+
 impl LR35902 {
     pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>) -> Self {
         LR35902 {
@@ -189,6 +195,54 @@ impl LR35902 {
             ime: false,
             halted: false,
         }
+    }
+
+    fn check_for_interrupt(&mut self) -> Option<()> {
+        let interrupt_flag = self.mmu.borrow().read_8(0xFF0F);
+        let interrupt_enable = self.mmu.borrow().read_8(0xFFFF);
+
+        if interrupt_enable & VBLANKBIT != 0 && interrupt_flag & VBLANKBIT != 0 {
+            self.call_vec(0x0040);
+            return Some(());
+        }
+
+        if interrupt_enable & LCDBIT != 0 && interrupt_flag & LCDBIT != 0 {
+            self.call_vec(0x0048);
+            return Some(());
+        }
+
+        if interrupt_enable & TIMERBIT != 0 && interrupt_flag & TIMERBIT != 0 {
+            self.call_vec(0x0050);
+            return Some(());
+        }
+
+        if interrupt_enable & SERIALBIT != 0 && interrupt_flag & SERIALBIT != 0 {
+            self.call_vec(0x0058);
+            return Some(());
+        }
+
+        if interrupt_enable & JOYPADBIT != 0 && interrupt_flag & JOYPADBIT != 0 {
+            self.call_vec(0x0060);
+            return Some(());
+        }
+
+        None
+    }
+
+    pub fn step(&mut self) -> usize {
+        if self.ime == true {
+            if let Some(()) = self.check_for_interrupt() {
+                self.ime = false;
+                self.halted = false;
+                return 20;
+            }
+        }
+
+        if self.halted == true {
+            return 0;
+        }
+
+        self.next_instruction()
     }
 
     pub fn next_instruction(&mut self) -> usize {
