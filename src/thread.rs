@@ -24,4 +24,5 @@ pub enum GuiMessage {
     NextInstruction,
     RequestState,
     Close,
+    StepMode(bool),
 }

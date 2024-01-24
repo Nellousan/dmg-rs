@@ -1,14 +1,18 @@
 mod cartridge;
 mod disassembler;
 mod dmg;
+mod graphics;
 mod gui;
 mod lr35902;
 mod mmu;
 mod thread;
 
+extern crate getopts;
+
 use dmg::DotMatrixGame;
+use eframe::epaint::Vec2;
 use gui::Gui;
-use std::{env, error, sync::mpsc::channel};
+use std::{env, error, rc::Rc, sync::mpsc::channel};
 use thread::{DmgMessage, GuiMessage};
 use tracing::Level;
 use tracing_subscriber::{
@@ -40,9 +44,10 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         dmg.start_game()
     });
 
-    let options = eframe::NativeOptions::default();
+    let mut options = eframe::NativeOptions::default();
+    options.viewport.min_inner_size = Some(eframe::egui::Vec2::new(1280f32, 720f32));
     eframe::run_native(
-        "My egui App",
+        "DMG",
         options,
         Box::new(|cc| Box::new(Gui::new(cc, gui_tx, dmg_rx))),
     )?;

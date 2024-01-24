@@ -66,6 +66,7 @@ impl DotMatrixGame {
                 GuiMessage::Close => return false,
                 GuiMessage::NextInstruction => self.next_step = true,
                 GuiMessage::RequestState => self.send_state_messages(),
+                GuiMessage::StepMode(mode) => self.step_mode = mode,
                 _ => (),
             };
         }
@@ -85,8 +86,6 @@ impl DotMatrixGame {
     }
 
     pub fn start_game(&mut self) -> anyhow::Result<()> {
-        self.mmu.borrow_mut().write_8(0xFF50, 1); // DISABLE BOOT ROM
-
         loop {
             if let false = self.handle_gui_messages() {
                 break;
@@ -101,8 +100,6 @@ impl DotMatrixGame {
             if self.step_mode {
                 self.next_step = false;
             }
-
-            std::thread::sleep(std::time::Duration::from_millis(10));
         }
 
         Ok(())

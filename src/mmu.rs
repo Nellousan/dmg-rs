@@ -73,8 +73,9 @@ impl MemoryMapUnit {
         let mut memory = self.memory.clone();
         let rom = self.cartridge.dump_rom();
 
-        for (i, elem) in memory.as_mut_slice()[0x0000..0x8000].iter_mut().enumerate() {
-            *elem = rom[i];
+        memory.as_mut_slice()[0x0000..0x8000].copy_from_slice(&rom);
+        if self.boot_rom_enabled() {
+            memory.as_mut_slice()[0..256].copy_from_slice(self.boot_rom);
         }
         Arc::new(memory)
     }

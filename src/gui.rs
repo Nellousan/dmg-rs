@@ -5,12 +5,13 @@ use std::sync::{
 
 use eframe::{
     egui::{self, load::SizedTexture, Key},
-    epaint::{ColorImage, TextureHandle, Vec2},
+    epaint::{Color32, ColorImage, TextureHandle, Vec2},
 };
 use tracing::error;
 
 use crate::{
     disassembler,
+    graphics::{draw_bg_map, draw_tile_data},
     lr35902::{Register16, Register8, Registers},
     thread::{DmgMessage, GuiMessage},
 };
@@ -21,9 +22,8 @@ struct State {
 }
 
 pub struct Gui {
-    color_image: ColorImage,
-    texture_handle: TextureHandle,
-    texture: SizedTexture,
+    tile_texture: SizedTexture,
+    bg_map_texture: SizedTexture,
     tx: Sender<GuiMessage>,
     rx: Receiver<DmgMessage>,
     state: State,
@@ -35,20 +35,23 @@ impl Gui {
         tx: Sender<GuiMessage>,
         rx: Receiver<DmgMessage>,
     ) -> Self {
-        let raw_image_data = [255u8; 200 * 200 * 4];
-        let color_image = ColorImage::from_rgba_unmultiplied([200, 200], &raw_image_data);
-        let texture_handle =
+        let tile_image = ColorImage::new([16 * 8, 24 * 8], Color32::WHITE);
+        let bg_map_image = ColorImage::new([32 * 8, 32 * 8], Color32::WHITE);
+        let tile_texture_handle =
             cc.egui_ctx
-                .load_texture("Image", color_image.clone(), Default::default());
+                .load_texture("TileData", tile_image, Default::default());
+        let bg_map_texture_handle =
+            cc.egui_ctx
+                .load_texture("BGMapData", bg_map_image, Default::default());
         cc.egui_ctx.set_pixels_per_point(1.3f32);
         // cc.egui_ctx
         //     .style_mut(|style| style.spacing.item_spacing = Vec2 { x: 5f32, y: 5f32 });
-        let texture = egui::load::SizedTexture::from_handle(&texture_handle);
+        let tile_texture = egui::load::SizedTexture::from_handle(&tile_texture_handle);
+        let bg_map_texture = egui::load::SizedTexture::from_handle(&bg_map_texture_handle);
 
         Self {
-            color_image,
-            texture_handle,
-            texture,
+            tile_texture,
+            bg_map_texture,
             tx,
             rx,
             state: State {
@@ -58,11 +61,22 @@ impl Gui {
         }
     }
 
-    fn handle_dmg_message(&mut self, _ctx: &egui::Context) {
+    fn update_memory_state(&mut self, ctx: &egui::Context, state: Arc<[u8; 65536]>) {
+        let tile_image = draw_tile_data(&state[0x8000..=0x97FF], state[0xFF47]);
+        let bg_map_image = draw_bg_map(&state[0x9800..=0x9BFF], &tile_image);
+
+        let tile_handle = ctx.load_texture("TileData", tile_image, Default::default());
+        let bg_map_handle = ctx.load_texture("BGMapData", bg_map_image, Default::default());
+        self.tile_texture = egui::load::SizedTexture::from_handle(&tile_handle);
+        self.bg_map_texture = egui::load::SizedTexture::from_handle(&bg_map_handle);
+        self.state.memory = state;
+    }
+
+    fn handle_dmg_message(&mut self, ctx: &egui::Context) {
         while let Ok(message) = self.rx.try_recv() {
             match message {
                 DmgMessage::RegistersStatus(registers) => self.state.registers = registers,
-                DmgMessage::MemoryState(state) => self.state.memory = state,
+                DmgMessage::MemoryState(state) => self.update_memory_state(ctx, state),
                 _ => (),
             }
         }
@@ -127,7 +141,7 @@ impl Gui {
 
     fn ui_ram(&self, ui: &mut egui::Ui) {
         ui.vertical(|ui| {
-            ui.heading("Work Ram");
+            ui.heading("Work RAM");
             egui::CollapsingHeader::new("Expand")
                 .id_source("collapse1")
                 .show(ui, |ui| {
@@ -141,7 +155,7 @@ impl Gui {
                         });
                 });
             ui.add_space(10f32);
-            ui.heading("External Ram");
+            ui.heading("External RAM");
             egui::CollapsingHeader::new("Expand")
                 .id_source("collapse2")
                 .show(ui, |ui| {
@@ -164,7 +178,7 @@ impl Gui {
             10,
         );
 
-        ui.heading("Disassembled Code.");
+        ui.heading("Disassembled Instructions");
         egui::ScrollArea::vertical()
             .id_source("scroll_disass")
             .min_scrolled_height(128f32)
@@ -180,10 +194,42 @@ impl Gui {
             });
     }
 
+    fn ui_vram(&self, ui: &mut egui::Ui) {
+        ui.vertical(|ui| {
+            ui.heading("Video RAM");
+            egui::CollapsingHeader::new("Expand")
+                .id_source("collapse_vram")
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.vertical(|ui| {
+                            ui.label("Background Map");
+                            ui.add(
+                                egui::Image::new(self.bg_map_texture).fit_to_original_size(1f32),
+                            );
+                        });
+                        ui.vertical(|ui| {
+                            ui.label("Tile Data");
+                            ui.add(egui::Image::new(self.tile_texture).fit_to_original_size(1.5));
+                        });
+                    })
+                });
+        });
+    }
+
     fn handle_inputs(&mut self, ctx: &egui::Context) {
         if ctx.input(|i| i.key_pressed(Key::N)) {
             if let Err(_) = self.tx.send(GuiMessage::NextInstruction) {
                 error!("Could not send Next Instruction message");
+            }
+        }
+        if ctx.input(|i| i.key_pressed(Key::S)) {
+            if let Err(_) = self.tx.send(GuiMessage::StepMode(true)) {
+                error!("Could not send Stop message");
+            }
+        }
+        if ctx.input(|i| i.key_pressed(Key::C)) {
+            if let Err(_) = self.tx.send(GuiMessage::StepMode(false)) {
+                error!("Could not send Continue message");
             }
         }
     }
@@ -200,7 +246,8 @@ impl eframe::App for Gui {
                     self.ui_disassemble(ui);
                 });
                 self.ui_ram(ui);
-            })
+                self.ui_vram(ui);
+            });
         });
         ctx.request_repaint();
 
