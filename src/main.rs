@@ -1,10 +1,12 @@
 mod cartridge;
+mod clock;
 mod disassembler;
 mod dmg;
 mod graphics;
 mod gui;
 mod lr35902;
 mod mmu;
+mod ppu;
 mod thread;
 
 extern crate getopts;

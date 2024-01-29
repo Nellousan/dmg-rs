@@ -8,6 +8,7 @@ use tracing::{debug, error};
 
 use crate::{
     cartridge,
+    clock::{Clock, TickCoordinator},
     lr35902::{Register16, LR35902},
     mmu::MemoryMapUnit,
     thread::{DmgMessage, GuiMessage},
@@ -22,6 +23,8 @@ pub struct DotMatrixGame {
     step_mode: bool,
     next_step: bool,
 }
+
+pub type ClockTicks = usize;
 
 impl DotMatrixGame {
     pub fn new_with_rom_path(
@@ -86,6 +89,9 @@ impl DotMatrixGame {
     }
 
     pub fn start_game(&mut self) -> anyhow::Result<()> {
+        let mut clock = Clock::new();
+        let mut cpu_ticks = TickCoordinator::new();
+        let mut _ppu_ticks = TickCoordinator::new();
         loop {
             if let false = self.handle_gui_messages() {
                 break;
@@ -95,11 +101,18 @@ impl DotMatrixGame {
                 continue;
             }
 
-            let _ticks = self.cpu.step();
+            clock.tick();
+
+            if cpu_ticks.tick() {
+                let ticks = self.cpu.step();
+                cpu_ticks.wait_for(ticks);
+            }
 
             if self.step_mode {
                 self.next_step = false;
             }
+
+            // TODO: Check for DMA Transfer https://gbdev.io/pandocs/OAM_DMA_Transfer.html
         }
 
         Ok(())

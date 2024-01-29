@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::mmu::MemoryMapUnit;
+use crate::{dmg::ClockTicks, mmu::MemoryMapUnit};
 
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
@@ -229,7 +229,7 @@ impl LR35902 {
         None
     }
 
-    pub fn step(&mut self) -> usize {
+    pub fn step(&mut self) -> ClockTicks {
         if self.ime == true {
             if let Some(()) = self.check_for_interrupt() {
                 self.ime = false;
