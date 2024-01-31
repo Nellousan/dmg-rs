@@ -4,6 +4,7 @@ use tracing::debug;
 
 use crate::cartridge::Cartridge;
 
+#[derive(Debug)]
 pub struct MemoryMapUnit {
     memory: [u8; 0x10000],
     cartridge: Box<dyn Cartridge>,

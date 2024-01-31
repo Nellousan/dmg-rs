@@ -14,8 +14,9 @@ Cargo.lock
 
 *.gb
 *.bin
+*.svg
+*.folded
 
 # Added by cargo
 
 /target
-

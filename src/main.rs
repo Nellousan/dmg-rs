@@ -12,11 +12,11 @@ mod thread;
 extern crate getopts;
 
 use dmg::DotMatrixGame;
-use eframe::epaint::Vec2;
 use gui::Gui;
-use std::{env, error, rc::Rc, sync::mpsc::channel};
+use std::{env, error, sync::mpsc::channel};
 use thread::{DmgMessage, GuiMessage};
 use tracing::Level;
+use tracing_flame::FlameLayer;
 use tracing_subscriber::{
     fmt::{self, writer::MakeWriterExt},
     prelude::__tracing_subscriber_SubscriberExt,
@@ -24,6 +24,7 @@ use tracing_subscriber::{
 };
 
 fn main() -> Result<(), Box<dyn error::Error>> {
+    let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
     tracing_subscriber::registry()
         .with(
             fmt::Layer::new()
@@ -33,6 +34,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
                 .with_thread_ids(false)
                 .compact(),
         )
+        .with(flame_layer)
         .try_init()?;
 
     let (gui_tx, gui_rx) = channel::<GuiMessage>();
@@ -42,7 +44,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let args: Vec<String> = env::args().collect();
 
     let handle = std::thread::spawn(move || {
-        let mut dmg = DotMatrixGame::new_with_test_rom(&args[1], dmg_tx, gui_rx)?;
+        let mut dmg = DotMatrixGame::new_with_rom_path(&args[1], dmg_tx, gui_rx)?;
         dmg.start_game()
     });
 

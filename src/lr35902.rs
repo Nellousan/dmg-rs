@@ -26,7 +26,7 @@ pub enum Register16 {
     PC,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct Registers {
     af: u16,
     bc: u16,
@@ -174,6 +174,7 @@ impl Registers {
     }
 }
 
+#[derive(Debug)]
 pub struct LR35902 {
     pub registers: Registers,
     mmu: Rc<RefCell<MemoryMapUnit>>,
