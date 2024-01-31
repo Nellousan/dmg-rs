@@ -7,12 +7,13 @@ use eframe::{
     egui::{self, load::SizedTexture, Key},
     epaint::{Color32, ColorImage, TextureHandle, Vec2},
 };
-use tracing::error;
+use tracing::{error, info, span, trace_span};
 
 use crate::{
     disassembler,
     graphics::{draw_bg_map, draw_tile_data},
     lr35902::{Register16, Register8, Registers},
+    ppu::PixelBuffer,
     thread::{DmgMessage, GuiMessage},
 };
 
@@ -24,6 +25,8 @@ struct State {
 pub struct Gui {
     tile_texture: SizedTexture,
     bg_map_texture: SizedTexture,
+    screen_texture_handle: TextureHandle,
+    screen_texture: SizedTexture,
     tx: Sender<GuiMessage>,
     rx: Receiver<DmgMessage>,
     state: State,
@@ -37,21 +40,28 @@ impl Gui {
     ) -> Self {
         let tile_image = ColorImage::new([16 * 8, 24 * 8], Color32::WHITE);
         let bg_map_image = ColorImage::new([32 * 8, 32 * 8], Color32::WHITE);
+        let screen_image = ColorImage::new([160, 140], Color32::WHITE);
         let tile_texture_handle =
             cc.egui_ctx
                 .load_texture("TileData", tile_image, Default::default());
         let bg_map_texture_handle =
             cc.egui_ctx
                 .load_texture("BGMapData", bg_map_image, Default::default());
+        let screen_texture_handle =
+            cc.egui_ctx
+                .load_texture("ScreenData", screen_image, Default::default());
         cc.egui_ctx.set_pixels_per_point(1.3f32);
         // cc.egui_ctx
         //     .style_mut(|style| style.spacing.item_spacing = Vec2 { x: 5f32, y: 5f32 });
         let tile_texture = egui::load::SizedTexture::from_handle(&tile_texture_handle);
         let bg_map_texture = egui::load::SizedTexture::from_handle(&bg_map_texture_handle);
+        let screen_texture = egui::load::SizedTexture::from_handle(&screen_texture_handle);
 
         Self {
             tile_texture,
             bg_map_texture,
+            screen_texture_handle,
+            screen_texture,
             tx,
             rx,
             state: State {
@@ -72,11 +82,24 @@ impl Gui {
         self.state.memory = state;
     }
 
+    fn update_screen_texture(&mut self, ctx: &egui::Context, pixel_buffer: Arc<PixelBuffer>) {
+        info!("new frame");
+        let mut image = ColorImage::new([160, 144], Color32::WHITE);
+        for (i, pixel) in pixel_buffer.iter().enumerate() {
+            image[(i % 160, i / 160)] = pixel.clone();
+        }
+
+        let handle = ctx.load_texture("ScreenData", image, Default::default());
+        self.screen_texture = egui::load::SizedTexture::from_handle(&handle);
+        self.screen_texture_handle = handle;
+    }
+
     fn handle_dmg_message(&mut self, ctx: &egui::Context) {
         while let Ok(message) = self.rx.try_recv() {
             match message {
                 DmgMessage::RegistersStatus(registers) => self.state.registers = registers,
                 DmgMessage::MemoryState(state) => self.update_memory_state(ctx, state),
+                DmgMessage::Render(pixel_buffer) => self.update_screen_texture(ctx, pixel_buffer),
                 _ => (),
             }
         }
@@ -200,7 +223,7 @@ impl Gui {
             egui::CollapsingHeader::new("Expand")
                 .id_source("collapse_vram")
                 .show(ui, |ui| {
-                    ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
                         ui.vertical(|ui| {
                             ui.label("Background Map");
                             ui.add(
@@ -214,6 +237,10 @@ impl Gui {
                     })
                 });
         });
+    }
+
+    fn ui_screen(&self, ui: &mut egui::Ui) {
+        ui.add(egui::Image::new(self.screen_texture).fit_to_original_size(2f32));
     }
 
     fn handle_inputs(&mut self, ctx: &egui::Context) {
@@ -245,6 +272,7 @@ impl eframe::App for Gui {
                     self.ui_registers(ui);
                     self.ui_disassemble(ui);
                 });
+                self.ui_screen(ui);
                 self.ui_ram(ui);
                 self.ui_vram(ui);
             });

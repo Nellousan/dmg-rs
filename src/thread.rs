@@ -5,7 +5,7 @@ use crate::{lr35902::Registers, ppu};
 pub enum DmgMessage {
     RegistersStatus(Registers),
     MemoryState(Arc<[u8; 0x10000]>),
-    Render(ppu::PixelBuffer),
+    Render(Arc<ppu::PixelBuffer>),
 }
 
 pub enum DmgButton {

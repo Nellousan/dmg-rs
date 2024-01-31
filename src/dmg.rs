@@ -4,19 +4,21 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-use tracing::{debug, error};
+use tracing::{error, span::Entered, trace_span};
 
 use crate::{
     cartridge,
     clock::{Clock, TickCoordinator},
-    lr35902::{Register16, LR35902},
+    lr35902::LR35902,
     mmu::MemoryMapUnit,
+    ppu::PixelProcessingUnit,
     thread::{DmgMessage, GuiMessage},
 };
 
 pub struct DotMatrixGame {
     mmu: Rc<RefCell<MemoryMapUnit>>,
     cpu: LR35902,
+    ppu: PixelProcessingUnit,
     clock_ticks: usize,
     tx: Sender<DmgMessage>,
     rx: Receiver<GuiMessage>,
@@ -34,9 +36,11 @@ impl DotMatrixGame {
     ) -> anyhow::Result<Self> {
         let cartridge = cartridge::from_file(path)?;
         let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
+        let ppu = PixelProcessingUnit::new(mmu.clone(), tx.clone());
         Ok(Self {
             mmu: mmu.clone(),
             cpu: LR35902::new(mmu),
+            ppu,
             clock_ticks: 0,
             tx,
             rx,
@@ -45,23 +49,24 @@ impl DotMatrixGame {
         })
     }
 
-    pub fn new_with_test_rom(
-        path: &str,
-        tx: Sender<DmgMessage>,
-        rx: Receiver<GuiMessage>,
-    ) -> anyhow::Result<Self> {
-        let cartridge = cartridge::test_rom_from_file(path)?;
-        let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
-        Ok(Self {
-            mmu: mmu.clone(),
-            cpu: LR35902::new(mmu),
-            clock_ticks: 0,
-            tx,
-            rx,
-            step_mode: true,
-            next_step: false,
-        })
-    }
+    // #[allow(dead_code)]
+    // pub fn new_with_test_rom(
+    //     path: &str,
+    //     tx: Sender<DmgMessage>,
+    //     rx: Receiver<GuiMessage>,
+    // ) -> anyhow::Result<Self> {
+    //     let cartridge = cartridge::test_rom_from_file(path)?;
+    //     let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
+    //     Ok(Self {
+    //         mmu: mmu.clone(),
+    //         cpu: LR35902::new(mmu),
+    //         clock_ticks: 0,
+    //         tx,
+    //         rx,
+    //         step_mode: true,
+    //         next_step: false,
+    //     })
+    // }
 
     fn handle_gui_messages(&mut self) -> bool {
         while let Ok(message) = self.rx.try_recv() {
@@ -91,8 +96,11 @@ impl DotMatrixGame {
     pub fn start_game(&mut self) -> anyhow::Result<()> {
         let mut clock = Clock::new();
         let mut cpu_ticks = TickCoordinator::new();
-        let mut _ppu_ticks = TickCoordinator::new();
+        let mut ppu_ticks = TickCoordinator::new();
+        let tick_span = trace_span!("dmg_tick");
         loop {
+            let _ = tick_span.enter();
+
             if let false = self.handle_gui_messages() {
                 break;
             }
@@ -101,11 +109,16 @@ impl DotMatrixGame {
                 continue;
             }
 
-            clock.tick();
+            // clock.tick();
 
             if cpu_ticks.tick() {
                 let ticks = self.cpu.step();
                 cpu_ticks.wait_for(ticks);
+            }
+
+            if ppu_ticks.tick() {
+                let ticks = self.ppu.step();
+                ppu_ticks.wait_for(ticks);
             }
 
             if self.step_mode {

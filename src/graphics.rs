@@ -45,6 +45,7 @@ impl Index<usize> for ColorPalette {
     }
 }
 
+// #[tracing::instrument]
 pub fn draw_tile_data(data: &[u8], dmg_palette: DmgPalette) -> ColorImage {
     let palette = ColorPalette::from_dmg_palette(dmg_palette);
     let mut image = ColorImage::new([16 * 8, 24 * 8], Color32::WHITE);
@@ -68,6 +69,7 @@ pub fn draw_tile_data(data: &[u8], dmg_palette: DmgPalette) -> ColorImage {
     image
 }
 
+// #[tracing::instrument]
 pub fn draw_bg_map(data: &[u8], tile_image: &ColorImage) -> ColorImage {
     let mut image = ColorImage::new([32 * 8, 32 * 8], Color32::WHITE);
     for (i, tile_idx) in data.iter().enumerate() {
