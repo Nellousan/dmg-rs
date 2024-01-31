@@ -38,13 +38,12 @@ pub struct TickCoordinator {
 
 impl TickCoordinator {
     pub fn new() -> Self {
-        Self { ticks_to_wait: 0 }
+        Self { ticks_to_wait: 1 }
     }
 
     pub fn tick(&mut self) -> bool {
-        let res = self.ticks_to_wait <= 0;
         self.ticks_to_wait -= 1;
-        res
+        self.ticks_to_wait <= 0
     }
 
     pub fn wait_for(&mut self, ticks: usize) {
