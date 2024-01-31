@@ -1,7 +1,8 @@
-use std::{fs, io, result};
+use std::{fs, io, ops::Range, result};
 
+use core::fmt::Debug;
 use thiserror::Error;
-use tracing::{debug, error};
+use tracing::error;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -10,12 +11,16 @@ pub enum Error {
     #[error("Cartridge size is inferior to 0x8000.")]
     InvalidRomSize,
     #[error("Invalid Header: {0}")]
-    InvalidHeader(String),
+    InvalidHeader(&'static str),
     #[error("Unimplemented MBC: {0}")]
     UnimplementedMBC(u8),
 }
 
 pub type Result<T> = result::Result<T, Error>;
+
+/////////
+// Cartridge Trait
+/////////
 
 pub trait Cartridge: Send {
     fn write_8(&mut self, address: u16, value: u8);
@@ -24,6 +29,17 @@ pub trait Cartridge: Send {
     fn read_16(&self, address: u16) -> u16;
     fn dump_rom(&self) -> Vec<u8>;
     fn dump_ram(&self) -> Vec<u8>;
+}
+
+impl Debug for dyn Cartridge {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mbc = self.dump_rom()[0x0147];
+        match mbc {
+            0x00 => write!(f, "No MBC"),
+            0x01..=0x03 => write!(f, "MBC1"),
+            _ => unreachable!(),
+        }
+    }
 }
 
 pub fn from_file(path: &str) -> Result<Box<dyn Cartridge>> {
@@ -43,6 +59,7 @@ pub fn from_file(path: &str) -> Result<Box<dyn Cartridge>> {
 
 // Test roms
 
+#[allow(dead_code)]
 pub fn test_rom_from_file(path: &str) -> Result<Box<dyn Cartridge>> {
     let rom = fs::read(path).map_err(|err| Error::Loading(err))?;
 
@@ -57,8 +74,11 @@ pub fn test_rom_from_file(path: &str) -> Result<Box<dyn Cartridge>> {
     }))
 }
 
+///////
 // ROM Cartridge
+///////
 
+#[derive(Debug)]
 pub struct CartridgeROM {
     rom: Vec<u8>,
     _rom_size: u8,
@@ -100,9 +120,11 @@ impl Cartridge for CartridgeROM {
     }
 }
 
+////////
 // MBC1 Cartridge
+////////
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CartridgeMBC1 {
     rom: Vec<u8>,
     ram: Vec<u8>,
@@ -125,7 +147,7 @@ impl CartridgeMBC1 {
             0x04 => (vec![0u8; 0x20000], 16),
             0x05 => (vec![0u8; 0x10000], 8),
             _ => {
-                return Err(Error::InvalidHeader("Invalid RAM size header.".into()));
+                return Err(Error::InvalidHeader("Invalid RAM size header."));
             }
         };
         Ok(Self {
