@@ -5,7 +5,7 @@ use std::{
 };
 
 use eframe::epaint::Color32;
-use tracing::{error, info};
+use tracing::{debug, error};
 
 use crate::{dmg::ClockTicks, graphics, mmu::MemoryMapUnit, thread::DmgMessage};
 
@@ -84,12 +84,15 @@ impl PixelProcessingUnit {
     }
 
     fn step_v_blank(&mut self) -> ClockTicks {
-        self.line_to_draw = 0;
+        self.line_to_draw += 1;
+        if self.line_to_draw > 153 {
+            self.line_to_draw = 0;
+            self.set_mode(Mode::OAMSearch);
+        }
         self.mmu
             .borrow_mut()
             .write_8(0xFF44, self.line_to_draw as u8);
-        self.set_mode(Mode::OAMSearch);
-        4560
+        456
     }
 
     // #[tracing::instrument]
@@ -98,16 +101,9 @@ impl PixelProcessingUnit {
         // Potential bottleneck
 
         // Step 1: Draw the background
-        let memory = self.mmu.borrow().get_memory_dump();
-        let tile_data = graphics::draw_tile_data(&memory[0x8000..=0x97FF], memory[0xFF47]);
-        let bg_map = graphics::draw_bg_map(&memory[0x9800..=0x9BFF], &tile_data);
-        let scy = memory[0xFF42];
-        let scx = memory[0xFF43];
-        let pixel_line =
-            &mut self.pixel_buffer[(self.line_to_draw * 160)..((self.line_to_draw + 1) * 160)];
-        for i in 0..160 {
-            pixel_line[i] = bg_map[(scy as usize, scx as usize + i)];
-        }
+        let vram = self.mmu.borrow().vram();
+        self.draw_bg_line(&vram);
+
         // Step 2: Draw the sprites
 
         // Step 3: Draw the window
@@ -117,5 +113,33 @@ impl PixelProcessingUnit {
             .borrow_mut()
             .write_8(0xFF44, self.line_to_draw as u8);
         172
+    }
+
+    fn draw_bg_line(&mut self, vram: &[u8]) {
+        let tile_data = &vram[0x0000..=0x17FF];
+        let bg_data = &vram[0x1800..=0x1BFF];
+        let palette = graphics::ColorPalette::from_dmg_palette(self.mmu.borrow().read_8(0xFF47));
+        let scy = self.mmu.borrow().read_8(0xFF42) as usize;
+        let scx = self.mmu.borrow().read_8(0xFF43) as usize;
+        let line_y = scy + self.line_to_draw;
+        let pixel_line =
+            &mut self.pixel_buffer[(self.line_to_draw * 160)..((self.line_to_draw + 1) * 160)];
+        for i in 0..160 {
+            let bg_tile = bg_data[(line_y / 8) * 32 + ((scx + i) / 8)] as usize;
+
+            let tile_array = &tile_data[(bg_tile * 16)..(bg_tile * 16 + 16)];
+            let tile_px_y = line_y % 8;
+            let tile_px_x = (scx + i) % 8;
+
+            let px_byte_a = tile_array[tile_px_y * 2];
+            let px_byte_b = tile_array[tile_px_y * 2 + 1];
+
+            let bit_a = (px_byte_a.wrapping_shr(7 - tile_px_x as u32)) & 0x01;
+            let bit_b = (px_byte_b.wrapping_shr(7 - tile_px_x as u32)) & 0x01;
+            let color = (bit_b << 1) | bit_a;
+
+            pixel_line[i] = palette[color as usize];
+        }
+        // Determine the tile byte given the coordinate of pixel
     }
 }

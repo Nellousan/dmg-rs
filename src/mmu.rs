@@ -80,4 +80,8 @@ impl MemoryMapUnit {
         }
         Arc::new(memory)
     }
+
+    pub fn vram(&self) -> Vec<u8> {
+        self.memory[0x8000..=0x9FFF].to_vec()
+    }
 }

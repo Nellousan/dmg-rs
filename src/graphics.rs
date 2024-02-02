@@ -1,15 +1,15 @@
 use std::ops::Index;
 
 use eframe::epaint::{Color32, ColorImage};
-use tracing::info;
+use tracing::{debug, info};
 
 static PALETTE: ColorPalette = DEFAULT_PALETTE;
 
 pub const DEFAULT_PALETTE: ColorPalette = ColorPalette(
-    Color32::from_rgb(0x08, 0x18, 0x20),
-    Color32::from_rgb(0x34, 0x68, 0x56),
-    Color32::from_rgb(0x88, 0xC0, 0x70),
     Color32::from_rgb(0xE0, 0xF8, 0xD0),
+    Color32::from_rgb(0x88, 0xC0, 0x70),
+    Color32::from_rgb(0x34, 0x68, 0x56),
+    Color32::from_rgb(0x08, 0x18, 0x20),
 );
 
 pub type DmgPalette = u8;
