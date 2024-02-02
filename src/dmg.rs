@@ -4,7 +4,7 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-use tracing::{error, span::Entered, trace_span};
+use tracing::{error, trace_span};
 
 use crate::{
     cartridge,
@@ -19,7 +19,6 @@ pub struct DotMatrixGame {
     mmu: Rc<RefCell<MemoryMapUnit>>,
     cpu: LR35902,
     ppu: PixelProcessingUnit,
-    clock_ticks: usize,
     tx: Sender<DmgMessage>,
     rx: Receiver<GuiMessage>,
     step_mode: bool,
@@ -41,32 +40,12 @@ impl DotMatrixGame {
             mmu: mmu.clone(),
             cpu: LR35902::new(mmu),
             ppu,
-            clock_ticks: 0,
             tx,
             rx,
             step_mode: false,
             next_step: false,
         })
     }
-
-    // #[allow(dead_code)]
-    // pub fn new_with_test_rom(
-    //     path: &str,
-    //     tx: Sender<DmgMessage>,
-    //     rx: Receiver<GuiMessage>,
-    // ) -> anyhow::Result<Self> {
-    //     let cartridge = cartridge::test_rom_from_file(path)?;
-    //     let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
-    //     Ok(Self {
-    //         mmu: mmu.clone(),
-    //         cpu: LR35902::new(mmu),
-    //         clock_ticks: 0,
-    //         tx,
-    //         rx,
-    //         step_mode: true,
-    //         next_step: false,
-    //     })
-    // }
 
     fn handle_gui_messages(&mut self) -> bool {
         while let Ok(message) = self.rx.try_recv() {
@@ -99,7 +78,7 @@ impl DotMatrixGame {
         let mut ppu_ticks = TickCoordinator::new();
         let tick_span = trace_span!("dmg_tick");
         loop {
-            let _ = tick_span.enter();
+            // let _ = tick_span.enter();
 
             if let false = self.handle_gui_messages() {
                 break;
@@ -110,22 +89,24 @@ impl DotMatrixGame {
             }
 
             // clock.tick();
+            for _ in 0..69905 {
+                if cpu_ticks.tick() {
+                    let ticks = self.cpu.step();
+                    cpu_ticks.wait_for(ticks);
+                }
 
-            if cpu_ticks.tick() {
-                let ticks = self.cpu.step();
-                cpu_ticks.wait_for(ticks);
+                if ppu_ticks.tick() {
+                    let ticks = self.ppu.step();
+                    ppu_ticks.wait_for(ticks);
+                }
+
+                if self.step_mode {
+                    self.next_step = false;
+                }
+
+                // TODO: Check for DMA Transfer https://gbdev.io/pandocs/OAM_DMA_Transfer.html
             }
-
-            if ppu_ticks.tick() {
-                let ticks = self.ppu.step();
-                ppu_ticks.wait_for(ticks);
-            }
-
-            if self.step_mode {
-                self.next_step = false;
-            }
-
-            // TODO: Check for DMA Transfer https://gbdev.io/pandocs/OAM_DMA_Transfer.html
+            std::thread::sleep(std::time::Duration::from_millis(16));
         }
 
         Ok(())
