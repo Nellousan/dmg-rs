@@ -4,10 +4,10 @@ use std::sync::{
 };
 
 use eframe::{
-    egui::{self, load::SizedTexture, Key},
-    epaint::{Color32, ColorImage, TextureHandle, Vec2},
+    egui::{self, Key},
+    epaint::{Color32, ColorImage, TextureHandle},
 };
-use tracing::{error, info, span, trace_span};
+use tracing::error;
 
 use crate::{
     disassembler,
@@ -64,7 +64,7 @@ impl Gui {
         }
     }
 
-    fn update_memory_state(&mut self, ctx: &egui::Context, state: Arc<[u8; 65536]>) {
+    fn update_memory_state(&mut self, _ctx: &egui::Context, state: Arc<[u8; 65536]>) {
         let tile_image = draw_tile_data(&state[0x8000..=0x97FF], state[0xFF47]);
         let bg_map_image = draw_bg_map(&state[0x9800..=0x9BFF], &tile_image);
 
@@ -74,7 +74,7 @@ impl Gui {
         self.state.memory = state;
     }
 
-    fn update_screen_texture(&mut self, ctx: &egui::Context, pixel_buffer: Arc<PixelBuffer>) {
+    fn update_screen_texture(&mut self, _ctx: &egui::Context, pixel_buffer: Arc<PixelBuffer>) {
         let mut image = ColorImage::new([160, 144], Color32::WHITE);
         for (i, pixel) in pixel_buffer.iter().enumerate() {
             image[(i % 160, i / 160)] = pixel.clone();
@@ -89,7 +89,6 @@ impl Gui {
                 DmgMessage::RegistersStatus(registers) => self.state.registers = registers,
                 DmgMessage::MemoryState(state) => self.update_memory_state(ctx, state),
                 DmgMessage::Render(pixel_buffer) => self.update_screen_texture(ctx, pixel_buffer),
-                _ => (),
             }
         }
     }
