@@ -23,10 +23,9 @@ struct State {
 }
 
 pub struct Gui {
-    tile_texture: SizedTexture,
-    bg_map_texture: SizedTexture,
+    tile_texture_handle: TextureHandle,
+    bg_map_texture_handle: TextureHandle,
     screen_texture_handle: TextureHandle,
-    screen_texture: SizedTexture,
     tx: Sender<GuiMessage>,
     rx: Receiver<DmgMessage>,
     state: State,
@@ -51,17 +50,11 @@ impl Gui {
             cc.egui_ctx
                 .load_texture("ScreenData", screen_image, Default::default());
         cc.egui_ctx.set_pixels_per_point(1.3f32);
-        // cc.egui_ctx
-        //     .style_mut(|style| style.spacing.item_spacing = Vec2 { x: 5f32, y: 5f32 });
-        let tile_texture = egui::load::SizedTexture::from_handle(&tile_texture_handle);
-        let bg_map_texture = egui::load::SizedTexture::from_handle(&bg_map_texture_handle);
-        let screen_texture = egui::load::SizedTexture::from_handle(&screen_texture_handle);
 
         Self {
-            tile_texture,
-            bg_map_texture,
+            tile_texture_handle,
+            bg_map_texture_handle,
             screen_texture_handle,
-            screen_texture,
             tx,
             rx,
             state: State {
@@ -75,23 +68,19 @@ impl Gui {
         let tile_image = draw_tile_data(&state[0x8000..=0x97FF], state[0xFF47]);
         let bg_map_image = draw_bg_map(&state[0x9800..=0x9BFF], &tile_image);
 
-        let tile_handle = ctx.load_texture("TileData", tile_image, Default::default());
-        let bg_map_handle = ctx.load_texture("BGMapData", bg_map_image, Default::default());
-        self.tile_texture = egui::load::SizedTexture::from_handle(&tile_handle);
-        self.bg_map_texture = egui::load::SizedTexture::from_handle(&bg_map_handle);
+        self.tile_texture_handle.set(tile_image, Default::default());
+        self.bg_map_texture_handle
+            .set(bg_map_image, Default::default());
         self.state.memory = state;
     }
 
     fn update_screen_texture(&mut self, ctx: &egui::Context, pixel_buffer: Arc<PixelBuffer>) {
-        info!("new frame");
         let mut image = ColorImage::new([160, 144], Color32::WHITE);
         for (i, pixel) in pixel_buffer.iter().enumerate() {
             image[(i % 160, i / 160)] = pixel.clone();
         }
 
-        let handle = ctx.load_texture("ScreenData", image, Default::default());
-        self.screen_texture = egui::load::SizedTexture::from_handle(&handle);
-        self.screen_texture_handle = handle;
+        self.screen_texture_handle.set(image, Default::default());
     }
 
     fn handle_dmg_message(&mut self, ctx: &egui::Context) {
@@ -207,7 +196,7 @@ impl Gui {
             .min_scrolled_height(128f32)
             .show(ui, |ui| {
                 ui.vertical(|ui| {
-                    for instruction in instrucions.iter() {
+                    for instruction in instrucions {
                         ui.monospace(format!(
                             "{:04X} {}    ",
                             instruction.address, instruction.mnemonic
@@ -223,24 +212,41 @@ impl Gui {
             egui::CollapsingHeader::new("Expand")
                 .id_source("collapse_vram")
                 .show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.vertical(|ui| {
-                            ui.label("Background Map");
-                            ui.add(
-                                egui::Image::new(self.bg_map_texture).fit_to_original_size(1f32),
-                            );
+                    egui::ScrollArea::vertical()
+                        .id_source("scroll_vram")
+                        .show(ui, |ui| {
+                            ui.vertical(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.label("Background Map");
+                                    ui.add(
+                                        egui::Image::new(egui::load::SizedTexture::from_handle(
+                                            &self.bg_map_texture_handle,
+                                        ))
+                                        .fit_to_original_size(1f32),
+                                    );
+                                });
+                                ui.vertical(|ui| {
+                                    ui.label("Tile Data");
+                                    ui.add(
+                                        egui::Image::new(egui::load::SizedTexture::from_handle(
+                                            &self.tile_texture_handle,
+                                        ))
+                                        .fit_to_original_size(1.5),
+                                    );
+                                });
+                            })
                         });
-                        ui.vertical(|ui| {
-                            ui.label("Tile Data");
-                            ui.add(egui::Image::new(self.tile_texture).fit_to_original_size(1.5));
-                        });
-                    })
                 });
         });
     }
 
     fn ui_screen(&self, ui: &mut egui::Ui) {
-        ui.add(egui::Image::new(self.screen_texture).fit_to_original_size(2f32));
+        ui.add(
+            egui::Image::new(egui::load::SizedTexture::from_handle(
+                &self.screen_texture_handle,
+            ))
+            .fit_to_original_size(2f32),
+        );
     }
 
     fn handle_inputs(&mut self, ctx: &egui::Context) {
