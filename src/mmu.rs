@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use tracing::debug;
-
 use crate::cartridge::Cartridge;
 
 #[derive(Debug)]
@@ -55,6 +53,7 @@ impl MemoryMapUnit {
     pub fn write_8(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.write_8(address, value),
+            0xFF46 => self.dma_transfer(value),
             _ => self.memory[address as usize] = value,
         }
     }
@@ -83,5 +82,16 @@ impl MemoryMapUnit {
 
     pub fn vram(&self) -> Vec<u8> {
         self.memory[0x8000..=0x9FFF].to_vec()
+    }
+
+    fn dma_transfer(&mut self, source: u8) {
+        let starting_address = (source as u16) << 8;
+
+        for i in 0..0x100 {
+            let address = starting_address + i;
+            let destination = 0xFE00 + i;
+            let value = self.read_8(address);
+            self.write_8(destination, value);
+        }
     }
 }
