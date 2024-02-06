@@ -2,6 +2,9 @@ use std::time::{Duration, SystemTime};
 
 use tracing::{error, warn};
 
+use crate::dmg::ClockTicks;
+
+#[derive(Debug)]
 pub struct Clock {
     last_stamp: SystemTime,
     period_time: Duration,
@@ -17,23 +20,25 @@ impl Clock {
 
     pub fn tick(&mut self) {
         let elapsed = self.last_stamp.elapsed();
-        if let Err(err) = elapsed.clone() {
+        if let Err(err) = elapsed {
             error!("{}", err.to_string());
-        }
-        let elapsed = elapsed.unwrap();
-        if elapsed > self.period_time {
-            warn!("Last iteration took longer than 1 clock tick !");
-            return;
-        }
+        } else {
+            let elapsed = elapsed.unwrap();
+            if elapsed > self.period_time {
+                // warn!("Last iteration took longer than 1 clock tick !");
+                self.last_stamp = SystemTime::now();
+                return;
+            }
 
-        let to_sleep = self.period_time - elapsed;
-        std::thread::sleep(to_sleep);
-        self.last_stamp = SystemTime::now();
+            let to_sleep = self.period_time - elapsed;
+            std::thread::sleep(to_sleep);
+            self.last_stamp = SystemTime::now();
+        }
     }
 }
 
 pub struct TickCoordinator {
-    ticks_to_wait: usize,
+    ticks_to_wait: isize,
 }
 
 impl TickCoordinator {
@@ -46,7 +51,21 @@ impl TickCoordinator {
         self.ticks_to_wait <= 0
     }
 
-    pub fn wait_for(&mut self, ticks: usize) {
-        self.ticks_to_wait = ticks;
+    pub fn ticks(&mut self, ticks: ClockTicks) -> bool {
+        self.ticks_to_wait -= ticks as isize;
+        self.ticks_to_wait <= 0
+    }
+
+    pub fn tick_all(&mut self) -> ClockTicks {
+        if self.ticks_to_wait <= 0 {
+            return 0;
+        }
+        let res = self.ticks_to_wait as ClockTicks;
+        self.ticks_to_wait = 0;
+        res
+    }
+
+    pub fn wait_for(&mut self, ticks: ClockTicks) {
+        self.ticks_to_wait = ticks as isize;
     }
 }

@@ -73,10 +73,8 @@ impl DotMatrixGame {
     }
 
     pub fn start_game(&mut self) -> anyhow::Result<()> {
-        let mut clock = Clock::new();
         let mut cpu_ticks = TickCoordinator::new();
         let mut ppu_ticks = TickCoordinator::new();
-        let tick_span = trace_span!("dmg_tick");
         loop {
             // let _ = tick_span.enter();
 
@@ -84,29 +82,38 @@ impl DotMatrixGame {
                 break;
             }
 
-            if self.step_mode && !self.next_step {
-                continue;
-            }
+            std::thread::sleep(std::time::Duration::from_millis(16));
 
-            // clock.tick();
-            for _ in 0..69905 {
-                if cpu_ticks.tick() {
-                    let ticks = self.cpu.step();
-                    cpu_ticks.wait_for(ticks);
+            if !self.step_mode {
+                // Normal execution flow
+                for _ in 0..69905 {
+                    if cpu_ticks.tick() {
+                        let ticks = self.cpu.step();
+                        cpu_ticks.wait_for(ticks);
+                    }
+
+                    if ppu_ticks.tick() {
+                        let ticks = self.ppu.step();
+                        ppu_ticks.wait_for(ticks);
+                    }
+                }
+            } else {
+                // Step mode execution flow
+                if !self.next_step {
+                    continue;
                 }
 
-                if ppu_ticks.tick() {
+                let ct = cpu_ticks.tick_all();
+                let ticks = self.cpu.step();
+                cpu_ticks.wait_for(ticks);
+
+                if ppu_ticks.ticks(ct) {
                     let ticks = self.ppu.step();
                     ppu_ticks.wait_for(ticks);
                 }
 
-                if self.step_mode {
-                    self.next_step = false;
-                }
-
-                // TODO: Check for DMA Transfer https://gbdev.io/pandocs/OAM_DMA_Transfer.html
+                self.next_step = false;
             }
-            std::thread::sleep(std::time::Duration::from_millis(16));
         }
 
         Ok(())
