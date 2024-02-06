@@ -346,14 +346,10 @@ fn disassemble_one(opcode: u8, pc: &mut u16, rom: &[u8]) -> Instruction {
 }
 
 pub fn disassemble(pc: u16, rom: &[u8], count: usize) -> Vec<Instruction> {
-    let c = count;
-    if pc as usize + count > 0xBFFF {
-        return Vec::new();
-    }
-
+    let count = (pc as usize + count) % 0xFFFF - pc as usize;
     let mut pc = pc;
     let mut res = Vec::new();
-    for _ in 0..c {
+    for _ in 0..count {
         res.push(disassemble_one(rom[pc as usize], &mut pc, rom));
         pc += 1;
     }
