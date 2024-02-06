@@ -4,10 +4,10 @@ use std::sync::{
 };
 
 use eframe::{
-    egui::{self, Key},
+    egui::{self, Key, Window},
     epaint::{Color32, ColorImage, TextureHandle},
 };
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::{
     disassembler,
@@ -29,6 +29,9 @@ pub struct Gui {
     tx: Sender<GuiMessage>,
     rx: Receiver<DmgMessage>,
     state: State,
+    rom_label_content: String,
+    ram_label_content: String,
+    memory_label_content: String,
 }
 
 impl Gui {
@@ -61,6 +64,9 @@ impl Gui {
                 registers: Default::default(),
                 memory: Arc::new([0u8; 0x10000]),
             },
+            rom_label_content: "".to_string(),
+            ram_label_content: "".to_string(),
+            memory_label_content: "".to_string(),
         }
     }
 
@@ -68,6 +74,11 @@ impl Gui {
         let tile_image = draw_tile_data(&state[0x8000..=0x97FF], state[0xFF47]);
         let bg_map_image = draw_bg_map(&state[0x9800..=0x9BFF], &tile_image);
 
+        self.rom_label_content =
+            self.format_ram_label(&self.state.memory[0xC000..0xD000], 0xC000, 0x1000);
+        self.ram_label_content =
+            self.format_ram_label(&self.state.memory[0xD000..0xE000], 0xD000, 0x1000);
+        self.memory_label_content = self.format_ram_label(&*self.state.memory, 0x0000, 0x10000);
         self.tile_texture_handle.set(tile_image, Default::default());
         self.bg_map_texture_handle
             .set(bg_map_image, Default::default());
@@ -133,14 +144,10 @@ impl Gui {
         });
     }
 
-    fn format_ram_label(&self, section: &[u8], offset: u16) -> String {
-        if section.len() != 0x1000 {
-            return format!("Malformed section slice, length is {}", section.len());
-        }
-
+    fn format_ram_label(&self, section: &[u8], offset: u16, length: usize) -> String {
         let mut res = format!("      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
-        for i in 0..0x100 {
-            let mut line = format!("\n{:0>4X} ", i * 0x10 + offset);
+        for i in 0x0..length / 0x10 {
+            let mut line = format!("\n{:0>4X} ", i * 0x10 + offset as usize);
             for j in 0x0..0x10 {
                 line.push_str(format!(" {:02X}", section[(i * 0x10 + j) as usize]).as_str());
             }
@@ -160,9 +167,7 @@ impl Gui {
                         .id_source("scroll1")
                         .min_scrolled_height(128f32)
                         .show(ui, |ui| {
-                            ui.monospace(
-                                self.format_ram_label(&self.state.memory[0xC000..0xD000], 0xC000),
-                            );
+                            ui.monospace(&self.rom_label_content);
                         });
                 });
             ui.add_space(10f32);
@@ -174,9 +179,7 @@ impl Gui {
                         .id_source("scroll2")
                         .min_scrolled_height(128f32)
                         .show(ui, |ui| {
-                            ui.monospace(
-                                self.format_ram_label(&self.state.memory[0xD000..0xE000], 0xD000),
-                            );
+                            ui.monospace(&self.ram_label_content);
                         });
                 });
         });
@@ -185,7 +188,7 @@ impl Gui {
     fn ui_disassemble(&self, ui: &mut egui::Ui) {
         let instrucions = disassembler::disassemble(
             self.state.registers.get_16(Register16::PC),
-            &self.state.memory[0x0000..0x8000],
+            &*self.state.memory,
             10,
         );
 
@@ -253,6 +256,9 @@ impl Gui {
             if let Err(_) = self.tx.send(GuiMessage::NextInstruction) {
                 error!("Could not send Next Instruction message");
             }
+            if let Err(_) = self.tx.send(GuiMessage::RequestState) {
+                error!("Could not send State Request message");
+            }
         }
         if ctx.input(|i| i.key_pressed(Key::S)) {
             if let Err(_) = self.tx.send(GuiMessage::StepMode(true)) {
@@ -281,6 +287,16 @@ impl eframe::App for Gui {
                 self.ui_ram(ui);
                 self.ui_vram(ui);
             });
+            egui::Window::new("Memory")
+                .default_open(false)
+                .show(ctx, |ui| {
+                    egui::ScrollArea::vertical()
+                        .id_source("mem_window_scroll")
+                        .min_scrolled_height(128f32)
+                        .show(ui, |ui| {
+                            ui.monospace(&self.memory_label_content);
+                        });
+                })
         });
         ctx.request_repaint();
 
