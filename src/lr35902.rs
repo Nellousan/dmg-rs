@@ -204,26 +204,36 @@ impl LR35902 {
 
         if interrupt_enable & VBLANKBIT != 0 && interrupt_flag & VBLANKBIT != 0 {
             self.call_vec(0x0040);
+            let interrupt_flag = interrupt_flag & !VBLANKBIT;
+            self.mmu.borrow_mut().write_8(0xFF0F, interrupt_flag);
             return Some(());
         }
 
         if interrupt_enable & LCDBIT != 0 && interrupt_flag & LCDBIT != 0 {
             self.call_vec(0x0048);
+            let interrupt_flag = interrupt_flag & !LCDBIT;
+            self.mmu.borrow_mut().write_8(0xFF0F, interrupt_flag);
             return Some(());
         }
 
         if interrupt_enable & TIMERBIT != 0 && interrupt_flag & TIMERBIT != 0 {
             self.call_vec(0x0050);
+            let interrupt_flag = interrupt_flag & !TIMERBIT;
+            self.mmu.borrow_mut().write_8(0xFF0F, interrupt_flag);
             return Some(());
         }
 
         if interrupt_enable & SERIALBIT != 0 && interrupt_flag & SERIALBIT != 0 {
             self.call_vec(0x0058);
+            let interrupt_flag = interrupt_flag & !SERIALBIT;
+            self.mmu.borrow_mut().write_8(0xFF0F, interrupt_flag);
             return Some(());
         }
 
         if interrupt_enable & JOYPADBIT != 0 && interrupt_flag & JOYPADBIT != 0 {
             self.call_vec(0x0060);
+            let interrupt_flag = interrupt_flag & !JOYPADBIT;
+            self.mmu.borrow_mut().write_8(0xFF0F, interrupt_flag);
             return Some(());
         }
 
