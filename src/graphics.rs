@@ -1,7 +1,6 @@
 use std::ops::Index;
 
 use eframe::epaint::{Color32, ColorImage};
-use tracing::{debug, info};
 
 static PALETTE: ColorPalette = DEFAULT_PALETTE;
 

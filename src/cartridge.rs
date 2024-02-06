@@ -93,8 +93,11 @@ impl CartridgeROM {
 }
 
 impl Cartridge for CartridgeROM {
-    fn write_8(&mut self, _address: u16, _value: u8) {
-        error!("Tried to write to ROM Cartridge !");
+    fn write_8(&mut self, address: u16, value: u8) {
+        error!(
+            "Tried to write to ROM Cartridge ! {:04X} {}",
+            address, value
+        );
     }
 
     fn write_16(&mut self, _address: u16, _value: u16) {
