@@ -5,7 +5,7 @@ use std::{
 };
 
 use eframe::epaint::Color32;
-use tracing::{debug, error};
+use tracing::error;
 
 use crate::{dmg::ClockTicks, graphics, mmu::MemoryMapUnit, thread::DmgMessage};
 
@@ -116,7 +116,14 @@ impl PixelProcessingUnit {
     }
 
     fn draw_bg_line(&mut self, vram: &[u8]) {
-        let tile_data = &vram[0x0000..=0x17FF];
+        let lcdc = self.mmu.borrow().read_8(0xFF40);
+        let tile_data;
+        if lcdc & 0b00010000 != 0 {
+            tile_data = &vram[0x0000..=0x0FFF];
+        } else {
+            tile_data = &vram[0x0800..=0x17FF];
+        }
+
         let bg_data = &vram[0x1800..=0x1BFF];
         let palette = graphics::ColorPalette::from_dmg_palette(self.mmu.borrow().read_8(0xFF47));
         let scy = self.mmu.borrow().read_8(0xFF42) as usize;
