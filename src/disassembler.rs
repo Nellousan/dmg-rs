@@ -62,7 +62,7 @@ fn next_16(pc: u16, rom: &[u8]) -> u16 {
     u16::from_le_bytes([n1, n2])
 }
 
-fn disassemble_one(opcode: u8, pc: &mut u16, rom: &[u8]) -> Instruction {
+pub fn disassemble_one(opcode: u8, pc: &mut u16, rom: &[u8]) -> Instruction {
     match opcode {
         // Opcode 0x
         0x00 => Instruction::new(*pc, opcode, "NOP"),
