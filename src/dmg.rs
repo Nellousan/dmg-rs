@@ -1,5 +1,7 @@
 use std::{
     cell::RefCell,
+    io::Write,
+    path::{Path, PathBuf},
     rc::Rc,
     sync::mpsc::{Receiver, Sender},
 };
@@ -23,6 +25,7 @@ pub struct DotMatrixGame {
     rx: Receiver<GuiMessage>,
     step_mode: bool,
     next_step: bool,
+    step_count: usize,
 }
 
 pub type ClockTicks = usize;
@@ -38,12 +41,13 @@ impl DotMatrixGame {
         let ppu = PixelProcessingUnit::new(mmu.clone(), tx.clone());
         Ok(Self {
             mmu: mmu.clone(),
-            cpu: LR35902::new(mmu),
+            cpu: LR35902::new(mmu, true),
             ppu,
             tx,
             rx,
             step_mode: false,
             next_step: false,
+            step_count: 0,
         })
     }
 
@@ -51,7 +55,10 @@ impl DotMatrixGame {
         while let Ok(message) = self.rx.try_recv() {
             match message {
                 GuiMessage::Close => return false,
-                GuiMessage::NextInstruction => self.next_step = true,
+                GuiMessage::NextInstruction(count) => {
+                    self.next_step = true;
+                    self.step_count = count
+                }
                 GuiMessage::RequestState => self.send_state_messages(),
                 GuiMessage::StepMode(mode) => self.step_mode = mode,
                 _ => (),
@@ -103,13 +110,16 @@ impl DotMatrixGame {
                     continue;
                 }
 
-                let ct = cpu_ticks.tick_all();
-                let ticks = self.cpu.step();
-                cpu_ticks.wait_for(ticks);
+                while self.step_count > 0 {
+                    let ct = cpu_ticks.tick_all();
+                    let ticks = self.cpu.step();
+                    cpu_ticks.wait_for(ticks);
 
-                if ppu_ticks.ticks(ct) {
-                    let ticks = self.ppu.step();
-                    ppu_ticks.wait_for(ticks);
+                    if ppu_ticks.ticks(ct) {
+                        let ticks = self.ppu.step();
+                        ppu_ticks.wait_for(ticks);
+                    }
+                    self.step_count -= 1;
                 }
 
                 self.next_step = false;

@@ -253,7 +253,15 @@ impl Gui {
 
     fn handle_inputs(&mut self, ctx: &egui::Context) {
         if ctx.input(|i| i.key_pressed(Key::N)) {
-            if let Err(_) = self.tx.send(GuiMessage::NextInstruction) {
+            if let Err(_) = self.tx.send(GuiMessage::NextInstruction(1)) {
+                error!("Could not send Next Instruction message");
+            }
+            if let Err(_) = self.tx.send(GuiMessage::RequestState) {
+                error!("Could not send State Request message");
+            }
+        }
+        if ctx.input(|i| i.key_pressed(Key::M)) {
+            if let Err(_) = self.tx.send(GuiMessage::NextInstruction(20)) {
                 error!("Could not send Next Instruction message");
             }
             if let Err(_) = self.tx.send(GuiMessage::RequestState) {
