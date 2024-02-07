@@ -22,7 +22,7 @@ pub enum DmgButton {
 pub enum GuiMessage {
     ButtonPressed(DmgButton),
     ButtonReleased(DmgButton),
-    NextInstruction,
+    NextInstruction(usize),
     RequestState,
     Close,
     StepMode(bool),

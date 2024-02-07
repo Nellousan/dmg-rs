@@ -7,7 +7,7 @@ use std::{
 use eframe::epaint::Color32;
 use tracing::error;
 
-use crate::{dmg::ClockTicks, graphics, mmu::MemoryMapUnit, thread::DmgMessage};
+use crate::{dmg::ClockTicks, graphics, lr35902, mmu::MemoryMapUnit, thread::DmgMessage};
 
 pub type PixelBuffer = [Color32; 160 * 144];
 
@@ -27,6 +27,11 @@ pub struct PixelProcessingUnit {
     line_to_draw: usize,
     tx: Sender<DmgMessage>,
 }
+
+const LCDC_HBLANK: u8 = 1u8 << 3;
+const LCDC_VBLANK: u8 = 1u8 << 4;
+const LCDC_OAM: u8 = 1u8 << 5;
+const LCDC_LYC: u8 = 1u8 << 6;
 
 impl PixelProcessingUnit {
     pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>, tx: Sender<DmgMessage>) -> Self {
@@ -48,11 +53,40 @@ impl PixelProcessingUnit {
         }
     }
 
+    fn trigger_interrupts(&self) {
+        let lcdc = self.mmu.borrow().read_8(0xFF41);
+        let mut int_flag = self.mmu.borrow().read_8(0xFF0F);
+        let int_enable = self.mmu.borrow().read_8(0xFFFF);
+        match self.mode {
+            Mode::HBlank => {
+                if lcdc & LCDC_HBLANK != 0 && int_enable & lr35902::LCDBIT != 0 {
+                    int_flag |= lr35902::LCDBIT;
+                }
+            }
+            Mode::VBlank => {
+                if lcdc & LCDC_VBLANK != 0 && int_enable & lr35902::LCDBIT != 0 {
+                    int_flag |= lr35902::LCDBIT;
+                }
+                if int_enable & lr35902::VBLANKBIT != 0 {
+                    int_flag |= lr35902::VBLANKBIT;
+                }
+            }
+            Mode::OAMSearch => {
+                if lcdc & LCDC_OAM != 0 && int_enable & lr35902::LCDBIT != 0 {
+                    int_flag |= lr35902::LCDBIT;
+                }
+            }
+            _ => (),
+        };
+        self.mmu.borrow_mut().write_8(0xFF0F, int_flag);
+    }
+
     fn set_mode(&mut self, mode: Mode) {
         self.mode = mode;
         let stat = self.mmu.borrow().read_8(0xFF41);
         let stat = (stat & 0xFC) | mode as u8;
         self.mmu.borrow_mut().write_8(0xFF41, stat);
+        self.trigger_interrupts();
     }
 
     fn step_oam_search(&mut self) -> ClockTicks {
@@ -112,6 +146,17 @@ impl PixelProcessingUnit {
         self.mmu
             .borrow_mut()
             .write_8(0xFF44, self.line_to_draw as u8);
+
+        // Checks for LYC == LY to trigger interrupts
+        let mut int_flag = self.mmu.borrow().read_8(0xFF0F);
+        let lcdc = self.mmu.borrow().read_8(0xFF41);
+        let int_enable = self.mmu.borrow().read_8(0xFFFF);
+        let ly = self.mmu.borrow().read_8(0xFF44);
+        let lyc = self.mmu.borrow().read_8(0xFF45);
+        if ly == lyc && lcdc & LCDC_LYC != 0 && int_enable & lr35902::LCDBIT != 0 {
+            int_flag |= lr35902::LCDBIT;
+        }
+        self.mmu.borrow_mut().write_8(0xFF0F, int_flag);
         172
     }
 
@@ -122,6 +167,7 @@ impl PixelProcessingUnit {
             tile_data = &vram[0x0000..=0x0FFF];
         } else {
             tile_data = &vram[0x0800..=0x17FF];
+            // tile_data = &vram[0x0000..=0x17FF];
         }
 
         let bg_data = &vram[0x1800..=0x1BFF];

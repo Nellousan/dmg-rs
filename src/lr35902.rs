@@ -182,14 +182,14 @@ pub struct LR35902 {
     halted: bool,
 }
 
-const VBLANKBIT: u8 = 1u8 << 0u8;
-const LCDBIT: u8 = 1u8 << 1u8;
-const TIMERBIT: u8 = 1u8 << 2u8;
-const SERIALBIT: u8 = 1u8 << 3u8;
-const JOYPADBIT: u8 = 1u8 << 4u8;
+pub const VBLANKBIT: u8 = 1u8 << 0u8;
+pub const LCDBIT: u8 = 1u8 << 1u8;
+pub const TIMERBIT: u8 = 1u8 << 2u8;
+pub const SERIALBIT: u8 = 1u8 << 3u8;
+pub const JOYPADBIT: u8 = 1u8 << 4u8;
 
 impl LR35902 {
-    pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>) -> Self {
+    pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>, with_trace: bool) -> Self {
         LR35902 {
             mmu,
             registers: Default::default(),
