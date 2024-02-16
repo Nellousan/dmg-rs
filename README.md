@@ -5,6 +5,7 @@ State of the project:
 - Boot ROM runs fine
 - Pixel Processing Unit in progress
 - GUI with debug informations
+- Can generate flamegraphs using `tracing` and `inferno-flamegraph`
 
 Screenshot:
 ![screenshot](./.github/img/wip.png)
