@@ -29,6 +29,7 @@ pub trait Cartridge: Send {
     fn read_16(&self, address: u16) -> u16;
     fn dump_rom(&self) -> Vec<u8>;
     fn dump_ram(&self) -> Vec<u8>;
+    fn borrow_rom(&self) -> &[u8];
 }
 
 impl Debug for dyn Cartridge {
@@ -120,6 +121,10 @@ impl Cartridge for CartridgeROM {
 
     fn dump_ram(&self) -> Vec<u8> {
         [0u8; 0x2000].to_vec()
+    }
+
+    fn borrow_rom(&self) -> &[u8] {
+        &self.rom
     }
 }
 
@@ -251,6 +256,10 @@ impl Cartridge for CartridgeMBC1 {
     }
 
     fn dump_ram(&self) -> Vec<u8> {
+        unimplemented!()
+    }
+
+    fn borrow_rom(&self) -> &[u8] {
         unimplemented!()
     }
 }

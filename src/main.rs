@@ -8,6 +8,7 @@ mod lr35902;
 mod mmu;
 mod ppu;
 mod thread;
+mod tracer;
 
 extern crate getopts;
 

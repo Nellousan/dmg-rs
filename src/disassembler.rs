@@ -1,4 +1,4 @@
-#[derive(Default)]
+#[derive(Default, Debug)]
 #[allow(dead_code)]
 pub struct Instruction {
     pub address: u16,

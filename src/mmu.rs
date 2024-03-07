@@ -94,4 +94,8 @@ impl MemoryMapUnit {
             self.write_8(destination, value);
         }
     }
+
+    pub fn borrow_rom(&self) -> &[u8] {
+        &self.cartridge.borrow_rom()
+    }
 }

@@ -6,7 +6,7 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-use tracing::{error, trace_span};
+use tracing::{error, info, trace_span};
 
 use crate::{
     cartridge,
@@ -15,6 +15,7 @@ use crate::{
     mmu::MemoryMapUnit,
     ppu::PixelProcessingUnit,
     thread::{DmgMessage, GuiMessage},
+    tracer::Tracer,
 };
 
 pub struct DotMatrixGame {
@@ -39,9 +40,13 @@ impl DotMatrixGame {
         let cartridge = cartridge::from_file(path)?;
         let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
         let ppu = PixelProcessingUnit::new(mmu.clone(), tx.clone());
+        let mut cpu = LR35902::new(mmu.clone());
+
+        cpu.tracer = Some(Tracer::new_call_tracer());
+
         Ok(Self {
             mmu: mmu.clone(),
-            cpu: LR35902::new(mmu, true),
+            cpu,
             ppu,
             tx,
             rx,
@@ -126,6 +131,10 @@ impl DotMatrixGame {
             }
         }
 
+        if let Some(ref tracer) = self.cpu.tracer {
+            let mut file = std::fs::File::create("dump.trace")?;
+            file.write_all(&tracer.to_string().into_bytes())?;
+        }
         Ok(())
     }
 }

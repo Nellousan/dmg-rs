@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{dmg::ClockTicks, mmu::MemoryMapUnit};
+use crate::{dmg::ClockTicks, mmu::MemoryMapUnit, tracer::Tracer};
 
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
@@ -176,6 +176,7 @@ impl Registers {
 
 #[derive(Debug)]
 pub struct LR35902 {
+    pub tracer: Option<Tracer>,
     pub registers: Registers,
     mmu: Rc<RefCell<MemoryMapUnit>>,
     ime: bool,
@@ -189,8 +190,9 @@ pub const SERIALBIT: u8 = 1u8 << 3u8;
 pub const JOYPADBIT: u8 = 1u8 << 4u8;
 
 impl LR35902 {
-    pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>, with_trace: bool) -> Self {
+    pub fn new(mmu: Rc<RefCell<MemoryMapUnit>>) -> Self {
         LR35902 {
+            tracer: None,
             mmu,
             registers: Default::default(),
             ime: false,
@@ -258,6 +260,9 @@ impl LR35902 {
 
     pub fn next_instruction(&mut self) -> usize {
         let opcode = self.pc_next_8();
+        if let Some(ref mut tracer) = self.tracer {
+            tracer.trace(opcode, self.registers.pc, self.mmu.borrow());
+        }
         match opcode {
             // Opcodes 0x
             0x00 => 4,
