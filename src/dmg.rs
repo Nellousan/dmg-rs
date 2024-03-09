@@ -1,16 +1,16 @@
 use std::{
     cell::RefCell,
     io::Write,
-    path::{Path, PathBuf},
     rc::Rc,
     sync::mpsc::{Receiver, Sender},
 };
 
-use tracing::{error, info, trace_span};
+use tracing::error;
 
 use crate::{
     cartridge,
     clock::TickCoordinator,
+    joypad::Joypad,
     lr35902::LR35902,
     mmu::MemoryMapUnit,
     ppu::PixelProcessingUnit,
@@ -21,6 +21,7 @@ pub struct DotMatrixGame {
     mmu: Rc<RefCell<MemoryMapUnit>>,
     cpu: LR35902,
     ppu: PixelProcessingUnit,
+    joypad: Rc<RefCell<Joypad>>,
     tx: Sender<DmgMessage>,
     rx: Receiver<GuiMessage>,
     step_mode: bool,
@@ -37,7 +38,8 @@ impl DotMatrixGame {
         rx: Receiver<GuiMessage>,
     ) -> anyhow::Result<Self> {
         let cartridge = cartridge::from_file(path)?;
-        let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
+        let joypad = Rc::new(RefCell::new(Joypad::new()));
+        let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge, joypad.clone())));
         let ppu = PixelProcessingUnit::new(mmu.clone(), tx.clone());
         let cpu = LR35902::new(mmu.clone());
 
@@ -45,6 +47,7 @@ impl DotMatrixGame {
             mmu: mmu.clone(),
             cpu,
             ppu,
+            joypad,
             tx,
             rx,
             step_mode: false,
@@ -63,7 +66,12 @@ impl DotMatrixGame {
                 }
                 GuiMessage::RequestState => self.send_state_messages(),
                 GuiMessage::StepMode(mode) => self.step_mode = mode,
-                _ => (),
+                GuiMessage::ButtonPressed(button) => {
+                    self.joypad.borrow_mut().button_pressed(button)
+                }
+                GuiMessage::ButtonReleased(button) => {
+                    self.joypad.borrow_mut().button_released(button)
+                }
             };
         }
         true

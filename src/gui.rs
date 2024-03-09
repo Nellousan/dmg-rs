@@ -14,7 +14,7 @@ use crate::{
     graphics::{draw_bg_map, draw_tile_data},
     lr35902::{Register16, Register8, Registers},
     ppu::PixelBuffer,
-    thread::{DmgMessage, GuiMessage},
+    thread::{DmgButton, DmgMessage, GuiMessage},
 };
 
 struct State {
@@ -251,6 +251,18 @@ impl Gui {
         );
     }
 
+    fn handle_joypad_inputs(&mut self, ctx: &egui::Context, key: Key, button: DmgButton) {
+        if ctx.input(|i| i.key_pressed(key)) {
+            if let Err(_) = self.tx.send(GuiMessage::ButtonPressed(button)) {
+                error!("Could not send Joypad Input");
+            }
+        } else if ctx.input(|i| i.key_released(key)) {
+            if let Err(_) = self.tx.send(GuiMessage::ButtonReleased(button)) {
+                error!("Could not send Joypad Input");
+            }
+        }
+    }
+
     fn handle_inputs(&mut self, ctx: &egui::Context) {
         if ctx.input(|i| i.key_pressed(Key::N)) {
             if let Err(_) = self.tx.send(GuiMessage::NextInstruction(1)) {
@@ -278,6 +290,14 @@ impl Gui {
                 error!("Could not send Continue message");
             }
         }
+        self.handle_joypad_inputs(ctx, Key::Z, DmgButton::A);
+        self.handle_joypad_inputs(ctx, Key::X, DmgButton::B);
+        self.handle_joypad_inputs(ctx, Key::Enter, DmgButton::Start);
+        self.handle_joypad_inputs(ctx, Key::Space, DmgButton::Select);
+        self.handle_joypad_inputs(ctx, Key::ArrowUp, DmgButton::Up);
+        self.handle_joypad_inputs(ctx, Key::ArrowDown, DmgButton::Down);
+        self.handle_joypad_inputs(ctx, Key::ArrowLeft, DmgButton::Left);
+        self.handle_joypad_inputs(ctx, Key::ArrowRight, DmgButton::Right);
     }
 }
 

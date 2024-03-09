@@ -1,20 +1,22 @@
-use std::sync::Arc;
+use std::{borrow::BorrowMut, cell::RefCell, rc::Rc, sync::Arc};
 
-use crate::cartridge::Cartridge;
+use crate::{cartridge::Cartridge, joypad::Joypad};
 
 #[derive(Debug)]
 pub struct MemoryMapUnit {
     memory: [u8; 0x10000],
     cartridge: Box<dyn Cartridge>,
     boot_rom: &'static [u8; 256],
+    joypad: Rc<RefCell<Joypad>>,
 }
 
 impl MemoryMapUnit {
-    pub fn new(cartridge: Box<dyn Cartridge>) -> Self {
+    pub fn new(cartridge: Box<dyn Cartridge>, joypad: Rc<RefCell<Joypad>>) -> Self {
         MemoryMapUnit {
             memory: [0u8; 0x10000],
             cartridge,
             boot_rom: include_bytes!("../dmg_boot.bin"),
+            joypad,
         }
     }
 
@@ -29,7 +31,7 @@ impl MemoryMapUnit {
 
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
-            0xFF00 => 0x0F, // TEMPORARY UNTIL INPUTS ARE IMPLEMENTED
+            0xFF00 => self.joypad.borrow().read(),
             _ => self.memory[address as usize],
         }
     }
@@ -54,6 +56,7 @@ impl MemoryMapUnit {
     pub fn write_8(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.write_8(address, value),
+            0xFF00 => (*self.joypad).borrow_mut().write(value),
             0xFF46 => self.dma_transfer(value),
             _ => self.memory[address as usize] = value,
         }

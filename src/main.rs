@@ -4,6 +4,7 @@ mod disassembler;
 mod dmg;
 mod graphics;
 mod gui;
+mod joypad;
 mod lr35902;
 mod mmu;
 mod ppu;
