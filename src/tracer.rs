@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{cell::Ref, collections::HashMap};
 
 use crate::{
@@ -36,6 +37,7 @@ struct Trace {
 #[derive(Debug)]
 pub struct Tracer {
     to_trace: HashMap<u8, InstructionRole>,
+    pub pc_to_trace: HashMap<u16, ()>,
     traces: Vec<Trace>,
     current_depth: u32,
 }
@@ -53,16 +55,22 @@ impl Tracer {
 
         Self {
             to_trace,
+            pc_to_trace: HashMap::new(),
             traces: Vec::new(),
             current_depth: 0,
         }
     }
 
     pub fn trace(&mut self, opcode: u8, pc: u16, memory: Ref<'_, MemoryMapUnit>) {
-        if let None = self.to_trace.get(&opcode) {
-            return;
+        let tmp = pc - 1; // Needed bcz pc_next_8 is called before trace so the pc is offset
+        if let Some(_) = self.to_trace.get(&opcode) {
+            self.trace_opcode(opcode, pc - 1, memory);
+        } else if let Some(_) = self.pc_to_trace.get(&tmp) {
+            self.trace_address(opcode, pc - 1, memory);
         }
+    }
 
+    fn trace_opcode(&mut self, opcode: u8, pc: u16, memory: Ref<'_, MemoryMapUnit>) {
         let mut pc = pc;
         let instruction = disassemble_one(opcode, &mut pc, memory.borrow_rom());
 
@@ -80,6 +88,16 @@ impl Tracer {
         if let InstructionRole::Call = self.to_trace[&opcode] {
             self.current_depth += 1;
         }
+    }
+
+    fn trace_address(&mut self, opcode: u8, pc: u16, memory: Ref<'_, MemoryMapUnit>) {
+        let mut pc = pc;
+        let instruction = disassemble_one(opcode, &mut pc, memory.borrow_rom());
+
+        self.traces.push(Trace {
+            depth: self.current_depth,
+            instruction,
+        })
     }
 }
 

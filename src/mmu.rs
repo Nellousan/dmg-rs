@@ -29,6 +29,7 @@ impl MemoryMapUnit {
 
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
+            0xFF00 => 0x0F, // TEMPORARY UNTIL INPUTS ARE IMPLEMENTED
             _ => self.memory[address as usize],
         }
     }

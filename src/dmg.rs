@@ -10,12 +10,11 @@ use tracing::{error, info, trace_span};
 
 use crate::{
     cartridge,
-    clock::{Clock, TickCoordinator},
+    clock::TickCoordinator,
     lr35902::LR35902,
     mmu::MemoryMapUnit,
     ppu::PixelProcessingUnit,
     thread::{DmgMessage, GuiMessage},
-    tracer::Tracer,
 };
 
 pub struct DotMatrixGame {
@@ -40,9 +39,7 @@ impl DotMatrixGame {
         let cartridge = cartridge::from_file(path)?;
         let mmu = Rc::new(RefCell::new(MemoryMapUnit::new(cartridge)));
         let ppu = PixelProcessingUnit::new(mmu.clone(), tx.clone());
-        let mut cpu = LR35902::new(mmu.clone());
-
-        cpu.tracer = Some(Tracer::new_call_tracer());
+        let cpu = LR35902::new(mmu.clone());
 
         Ok(Self {
             mmu: mmu.clone(),
