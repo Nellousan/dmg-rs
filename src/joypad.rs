@@ -1,3 +1,5 @@
+use tracing::debug;
+
 use crate::thread::DmgButton;
 
 #[derive(Debug)]

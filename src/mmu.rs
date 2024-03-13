@@ -1,6 +1,6 @@
-use std::{borrow::BorrowMut, cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use crate::{cartridge::Cartridge, joypad::Joypad};
+use crate::{cartridge::Cartridge, joypad::Joypad, lr35902::TIMERBIT, timer::Timer};
 
 #[derive(Debug)]
 pub struct MemoryMapUnit {
@@ -8,6 +8,7 @@ pub struct MemoryMapUnit {
     cartridge: Box<dyn Cartridge>,
     boot_rom: &'static [u8; 256],
     joypad: Rc<RefCell<Joypad>>,
+    timer: Timer,
 }
 
 impl MemoryMapUnit {
@@ -17,6 +18,7 @@ impl MemoryMapUnit {
             cartridge,
             boot_rom: include_bytes!("../dmg_boot.bin"),
             joypad,
+            timer: Timer::new(),
         }
     }
 
@@ -31,6 +33,7 @@ impl MemoryMapUnit {
 
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
+            0xFF04..=0xFF07 => self.timer.read_8(address),
             0xFF00 => self.joypad.borrow().read(),
             _ => self.memory[address as usize],
         }
@@ -57,6 +60,7 @@ impl MemoryMapUnit {
         match address {
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.write_8(address, value),
             0xFF00 => (*self.joypad).borrow_mut().write(value),
+            0xFF04..=0xFF07 => self.timer.write_8(address, value),
             0xFF46 => self.dma_transfer(value),
             _ => self.memory[address as usize] = value,
         }
@@ -70,6 +74,14 @@ impl MemoryMapUnit {
                 self.memory[address as usize] = bytes[0];
                 self.memory[(address + 1) as usize] = bytes[1];
             }
+        }
+    }
+
+    pub fn timer_tick(&mut self) {
+        if self.timer.tick() {
+            let value = self.memory[0xFF0F];
+            let value = value | TIMERBIT;
+            self.memory[0xFF0F] = value;
         }
     }
 

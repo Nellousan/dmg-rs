@@ -11,7 +11,7 @@ use crate::{
     cartridge,
     clock::TickCoordinator,
     joypad::Joypad,
-    lr35902::LR35902,
+    lr35902::{JOYPADBIT, LR35902},
     mmu::MemoryMapUnit,
     ppu::PixelProcessingUnit,
     thread::{DmgMessage, GuiMessage},
@@ -67,7 +67,9 @@ impl DotMatrixGame {
                 GuiMessage::RequestState => self.send_state_messages(),
                 GuiMessage::StepMode(mode) => self.step_mode = mode,
                 GuiMessage::ButtonPressed(button) => {
-                    self.joypad.borrow_mut().button_pressed(button)
+                    self.joypad.borrow_mut().button_pressed(button);
+                    let value = self.mmu.borrow().read_8(0xFF0F);
+                    self.mmu.borrow_mut().write_8(0xFF0F, value | JOYPADBIT);
                 }
                 GuiMessage::ButtonReleased(button) => {
                     self.joypad.borrow_mut().button_released(button)
@@ -94,7 +96,6 @@ impl DotMatrixGame {
         let mut ppu_ticks = TickCoordinator::new();
         loop {
             // let _ = tick_span.enter();
-
             if let false = self.handle_gui_messages() {
                 break;
             }
@@ -104,6 +105,7 @@ impl DotMatrixGame {
             if !self.step_mode {
                 // Normal execution flow
                 for _ in 0..69905 {
+                    self.mmu.borrow_mut().timer_tick();
                     if cpu_ticks.tick() {
                         let ticks = self.cpu.step();
                         cpu_ticks.wait_for(ticks);
@@ -121,6 +123,7 @@ impl DotMatrixGame {
                 }
 
                 while self.step_count > 0 {
+                    self.mmu.borrow_mut().timer_tick();
                     let ct = cpu_ticks.tick_all();
                     let ticks = self.cpu.step();
                     cpu_ticks.wait_for(ticks);

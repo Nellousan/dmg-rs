@@ -8,6 +8,7 @@ pub enum DmgMessage {
     Render(Arc<ppu::PixelBuffer>),
 }
 
+#[derive(Debug)]
 pub enum DmgButton {
     Up,
     Down,
