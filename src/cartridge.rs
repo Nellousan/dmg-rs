@@ -51,6 +51,7 @@ pub fn from_file(path: &str) -> Result<Box<dyn Cartridge>> {
     }
 
     let mbc = rom[0x0147];
+    tracing::info!(mbc = format!("{:X}", mbc), "Detected ROM Type");
     match mbc {
         0x00 => Ok(Box::new(CartridgeROM::new(rom)?)),
         0x01..=0x03 => Ok(Box::new(CartridgeMBC1::new(rom)?)),
@@ -71,6 +72,7 @@ pub fn test_rom_from_file(path: &str) -> Result<Box<dyn Cartridge>> {
 
     Ok(Box::new(CartridgeROM {
         rom: new_rom,
+        ram: [0u8; 0x2000],
         _rom_size: 0,
     }))
 }
@@ -82,6 +84,7 @@ pub fn test_rom_from_file(path: &str) -> Result<Box<dyn Cartridge>> {
 #[derive(Debug)]
 pub struct CartridgeROM {
     rom: Vec<u8>,
+    ram: [u8; 0x2000],
     _rom_size: u8,
 }
 
@@ -89,24 +92,51 @@ impl CartridgeROM {
     fn new(rom: Vec<u8>) -> Result<Self> {
         let _rom_size = rom[0x0148];
 
-        Ok(Self { rom, _rom_size })
+        tracing::info!(?_rom_size, len = rom.len());
+
+        Ok(Self {
+            rom,
+            ram: [0u8; 0x2000],
+            _rom_size,
+        })
     }
 }
 
 impl Cartridge for CartridgeROM {
     fn write_8(&mut self, address: u16, value: u8) {
-        error!(
-            "Tried to write to ROM Cartridge ! {:04X} {}",
-            address, value
-        );
+        match address {
+            0xA000..=0xBFFF => self.ram[(address - 0xA000) as usize] = value,
+            _ => {
+                error!(
+                    "Tried to write to ROM Cartridge ! Address: {:04X} Value: {}",
+                    address, value
+                );
+            }
+        }
     }
 
-    fn write_16(&mut self, _address: u16, _value: u16) {
-        error!("Tried to write to ROM Cartridge !");
+    fn write_16(&mut self, address: u16, value: u16) {
+        match address {
+            0xA000..=0xBFFF => {
+                let bytes = value.to_le_bytes();
+                self.ram[(address - 0xA000) as usize] = bytes[0];
+                self.ram[((address - 0xA000) + 1) as usize] = bytes[1];
+            }
+            _ => {
+                error!(
+                    "Tried to write to ROM Cartridge ! Address: {:04X} Value: {}",
+                    address, value
+                );
+            }
+        }
     }
 
     fn read_8(&self, address: u16) -> u8 {
-        self.rom[address as usize]
+        match address {
+            0x0000..=0x7FFF => self.rom[address as usize],
+            0xA000..=0xBFFF => self.ram[(address - 0xA000) as usize],
+            _ => panic!("Tried to read out of cartridge bounds"),
+        }
     }
 
     fn read_16(&self, address: u16) -> u16 {

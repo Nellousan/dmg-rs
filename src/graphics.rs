@@ -2,8 +2,6 @@ use std::ops::Index;
 
 use eframe::epaint::{Color32, ColorImage};
 
-static PALETTE: ColorPalette = DEFAULT_PALETTE;
-
 pub const DEFAULT_PALETTE: ColorPalette = ColorPalette(
     Color32::from_rgb(0xE0, 0xF8, 0xD0),
     Color32::from_rgb(0x88, 0xC0, 0x70),
@@ -16,6 +14,7 @@ pub type DmgPalette = u8;
 pub struct ColorPalette(Color32, Color32, Color32, Color32);
 
 impl ColorPalette {
+    #![allow(unused)]
     pub fn from_colors(r: Color32, g: Color32, b: Color32, a: Color32) -> Self {
         ColorPalette(r, g, b, a)
     }

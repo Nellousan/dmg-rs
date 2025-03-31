@@ -68,7 +68,7 @@ impl DotMatrixGame {
                 GuiMessage::StepMode(mode) => self.step_mode = mode,
                 GuiMessage::ButtonPressed(button) => {
                     self.joypad.borrow_mut().button_pressed(button);
-                    let value = self.mmu.borrow().read_8(0xFF0F);
+                    let value = self.mmu.borrow().read_8(0xFF0F); // Trigger Interrupt ?
                     self.mmu.borrow_mut().write_8(0xFF0F, value | JOYPADBIT);
                 }
                 GuiMessage::ButtonReleased(button) => {

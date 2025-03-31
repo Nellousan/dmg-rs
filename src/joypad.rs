@@ -1,5 +1,3 @@
-use tracing::debug;
-
 use crate::thread::DmgButton;
 
 #[derive(Debug)]
@@ -39,6 +37,7 @@ impl Joypad {
             DmgButton::Start => clear(&mut self.buttons, 3),
             DmgButton::Select => clear(&mut self.buttons, 2),
         }
+        tracing::info!(?button, ?self.d_pad, ?self.buttons, "Button pressed");
     }
 
     pub fn button_released(&mut self, button: DmgButton) {
@@ -64,14 +63,17 @@ impl Joypad {
             0x02 => self.select_mode = SelectMode::Buttons,
             0x03 => self.select_mode = SelectMode::Other,
             _ => unreachable!(),
-        }
+        };
+        tracing::info!(?self.select_mode, "Mode selected")
     }
 
     pub fn read(&self) -> u8 {
-        match self.select_mode {
-            SelectMode::Buttons => 0x20 | self.buttons,
-            SelectMode::DirectionalPad => 0x10 | self.d_pad,
+        let res = match self.select_mode {
+            SelectMode::Buttons => 0x10 | self.buttons,
+            SelectMode::DirectionalPad => 0x20 | self.d_pad,
             SelectMode::Other => 0x3F,
-        }
+        };
+        tracing::info!(res = format!("{:X}", res), ?self.select_mode, "Joypad Read");
+        res
     }
 }

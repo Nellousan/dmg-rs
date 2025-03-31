@@ -1139,7 +1139,7 @@ impl LR35902 {
         let d_value = self.registers.get_16(destination);
         let s_value = self.registers.get_16(source);
 
-        let h_flag = (d_value & 0x000F) + (s_value + 0x000F) > 0x0F;
+        let h_flag = (d_value & 0x000F).wrapping_add(s_value.wrapping_add(0x000F)) > 0x0F;
         let mut c_flag = false;
         if let None = d_value.checked_add(s_value) {
             c_flag = true;

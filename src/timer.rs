@@ -1,5 +1,3 @@
-use tracing::debug;
-
 #[derive(Default, Debug, Clone, Copy)]
 pub enum ClockType {
     #[default]
@@ -73,7 +71,7 @@ impl Timer {
             _ => true,
         };
 
-        self.selected_clock = ClockType::from(value);
+        self.selected_clock = ClockType::from(value & 0x03);
     }
 
     pub fn write_8(&mut self, address: u16, value: u8) {

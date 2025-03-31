@@ -53,6 +53,8 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let mut options = eframe::NativeOptions::default();
     options.viewport.min_inner_size = Some(eframe::egui::Vec2::new(1280f32, 720f32));
+    options.viewport.max_inner_size = Some(eframe::egui::Vec2::new(1280f32, 720f32));
+    // options.viewport.inner_size = Some(eframe::egui::Vec2::new(1280f32, 720f32));
     eframe::run_native(
         "DMG",
         options,

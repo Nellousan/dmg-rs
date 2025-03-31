@@ -4,10 +4,10 @@ use std::sync::{
 };
 
 use eframe::{
-    egui::{self, Key, Window},
+    egui::{self, Key},
     epaint::{Color32, ColorImage, TextureHandle},
 };
-use tracing::{debug, error};
+use tracing::error;
 
 use crate::{
     disassembler,
